@@ -1,0 +1,1102 @@
+
+⬡
+
+CONTEXTMESH
+Technical Implementation Roadmap
+
+Frontend
+Backend
+MCP Server
+Auth
+
+"No knowledge left behind."
+Team ContextMesh  ·  For Internal Use Only
+
+Table of Contents
+Part 1  Project Overview & Architecture
+Part 2  Frontend Implementation
+  2.1   Landing Page Updates
+  2.2   Create Team Flow
+  2.3   Login / Enter Team Flow
+  2.4   Team Dashboard
+  2.5   Context Controls (Toggle, Load, Private)
+Part 3  Backend Implementation
+  3.1   Project Setup & Tech Stack
+  3.2   Database Schema
+  3.3   Authentication API
+  3.4   Context Store API
+  3.5   Master Context Engine
+  3.6   Conflict Detection
+Part 4  MCP Server Build
+  4.1   What the MCP Server Does
+  4.2   Project Setup
+  4.3   The 4 MCP Tools
+  4.4   Platform Config Files
+Part 5  Connecting Frontend + Backend + MCP
+Part 6  Week-by-Week Build Order
+
+Part 1 — Project Overview & Architecture
+Before writing any code, it helps to see the full picture of what you are building. ContextMesh has three separate pieces that talk to each other. Understanding how they connect will make every step below make sense.
+
+What You Are Building
+┌─────────────────────────────────────────────────────┐
+│              CONTEXTMESH — 3 PIECES                │
+├─────────────────┬──────────────────┬───────────────┤
+│   FRONTEND      │    BACKEND       │  MCP SERVER   │
+│                 │                  │               │
+│ Landing page    │ FastAPI (Python) │ Node.js pkg   │
+│ Create team     │ PostgreSQL DB    │ Runs inside   │
+│ Login page      │ Redis cache      │ AI tools      │
+│ Dashboard       │ LLM pipeline     │ (Cursor, etc) │
+│                 │ REST API         │               │
+│ React + Vite    │                  │ npm package   │
+│ Lovable hosted  │ You host this    │ Team installs │
+└─────────────────┴──────────────────┴───────────────┘
+
+How The Three Pieces Talk
+// Daily flow once everything is built:
+
+1. Engineer opens Cursor (or Claude Code, Codex, Cline)
+   → MCP Server starts automatically
+   → MCP calls Backend: GET /master-context?team=acme
+   → Backend returns team decisions, work in progress
+   → AI session begins WITH team knowledge loaded
+
+2. Engineer works with AI for 2 hours
+
+3. Session ends
+   → MCP Server calls Backend: POST /context/save
+   → Full chat history saved to PostgreSQL
+   → Under this engineer's name + team
+
+4. Every 30 min — aggregation engine runs
+   → Reads all team members' recent sessions
+   → LLM synthesizes new Master Context
+   → Stored in Redis for fast retrieval
+
+5. Engineer opens Dashboard (frontend)
+   → Sees team members, their context, Master Context
+   → Clicks 'Load into AI' for any teammate
+   → Their full context injected into next AI session
+
+Part 2 — Frontend Implementation
+The frontend lives on Lovable and is already partially built at context-mesh-hub.lovable.app. This part tells you exactly what to add and how to build each screen. You will use Lovable prompts for all of this — no manual coding needed.
+Tech: React + Vite, Tailwind CSS, shadcn/ui, hosted on Lovable. All data stored in localStorage for now — the backend connects in Part 5.
+
+2.1 — Landing Page Updates
+The landing page already exists. You only need to add two buttons that lead into the product flows.
+
+What to add to the Navbar:
+On the right side of the navbar, next to the existing CTA button, add two new buttons:
+'Enter Team' — dark outlined pill button, white text
+'Create Team' — violet filled pill button, white text
+
+What to add to the Hero Section:
+Below the existing CTA buttons, add the same two buttons in a slightly smaller size
+Small text below them: 'Already have a passcode? Enter your team →'
+
+Lovable Prompt Tip: Tell Lovable to add these two buttons without touching any existing animations, scroll sections, or design. Specify exact button styles to match the existing design system.
+
+2.2 — Create Team Flow
+This is a multi-step modal that pops up when someone clicks 'Create Team'. It walks the admin through setting up a new team in 3 simple steps.
+
+Step 1 — Team Name
+A dark glass modal opens over the landing page (backdrop blur)
+Single input field: 'Team Name' — e.g. 'Acme Engineering'
+Placeholder text: 'What do you call your team?'
+'Next →' button at bottom — violet, full width
+Validates: not empty, minimum 3 characters
+
+Step 2 — Your Name
+Same modal, slides to next step
+Single input: 'Your Name' — e.g. 'Arjun Sharma'
+Small note below: 'You will be the team admin'
+'Create Team →' button — violet, full width
+
+Step 3 — Success Screen
+After clicking Create Team, the system generates two things and shows them on screen:
+
+// What gets auto-generated:
+
+Team ID:    acme-engineering
+            (slugified from team name, lowercase, hyphens)
+
+Passcode:   MANGO-42-ROCKET
+            (3 random words + 2 random numbers)
+            (this is what teammates will use to join)
+
+// Stored in localStorage:
+{
+  teamId: 'acme-engineering',
+  teamName: 'Acme Engineering',
+  passcode: 'MANGO-42-ROCKET',
+  adminName: 'Arjun Sharma',
+  members: ['Arjun Sharma'],
+  createdAt: '2025-03-13T10:00:00Z'
+}
+
+The success screen should show:
+Large green checkmark at top
+'Team Created!' heading
+Team ID displayed in a dark code-style box
+Passcode displayed in a large, prominent dark code-style box with a 'Copy' button next to it
+Text: 'Share this passcode with your team. They will use it to join.'
+'Go to Dashboard →' button — takes them to /dashboard
+
+Important: The passcode generation logic is purely frontend JavaScript for now. Later in Part 5 you will move this to the backend API so it is truly secure.
+
+2.3 — Login / Enter Team Flow
+This is the simplest flow — just a passcode and name. It is what every team member (not the admin) uses to join.
+
+The Modal
+Opens when 'Enter Team' is clicked
+Input 1: 'Team Passcode' — e.g. 'MANGO-42-ROCKET'
+Input 2: 'Your Name' — e.g. 'Priya Mehta'
+'Join Team →' button — violet, full width
+
+Validation Logic
+// On clicking 'Join Team':
+
+1. Check localStorage for stored team
+2. Compare entered passcode with stored passcode
+3. If match:
+   → Add member name to team.members array
+   → Save current user to localStorage:
+     { currentUser: 'Priya Mehta', teamId: 'acme-engineering' }
+   → Redirect to /dashboard
+
+4. If no match:
+   → Show error: 'Incorrect passcode. Check with your team admin.'
+   → Red border on passcode input
+
+For now, the passcode check is client-side. This means it only works on the same browser/device as the admin. In Part 5, you connect this to the real backend API where it works across devices.
+
+2.4 — Team Dashboard (/dashboard)
+This is the main product screen. It is the same 3-panel layout you have in the demo, but now it is a real page with real data from localStorage (later from the backend).
+
+Dashboard Header
+Left: ⬡ ContextMesh logo
+Center: Team name — e.g. 'Acme Engineering'
+Right: Current user name + 'Log out' button (clears localStorage, returns to landing)
+
+Left Panel — Team Members
+Shows all members in the team.members array
+Each row: colored status dot, name, last active time
+On hover — two buttons slide in:
+'👁 View Context' — shows their context in center panel (read only)
+'⚡ Load into AI →' — loads their context for active use
+The currently logged-in user's row is highlighted with a violet left border
+
+Center Panel — Context Feed
+This panel has three possible states depending on what is selected:
+
+Own Context (default)
+Peer Context Loaded
+Own context feed (default)
+Mode 1 toggle visible at top
+Raw chat session entries
+Expandable inline chat history
+Mark session as Private option
+Peer context loaded (⚡ mode)
+Green banner: 'X context loaded'
+Violet left border on panel
+Their context entries shown
+Remove button to go back to own
+
+Center Panel — Entry Card Structure
+Every context entry shows as a card with the following parts:
+Top left: Category badge — colored pill
+💬 Raw Chat (dark gray) — an actual AI chat session
+🔵 Decision (indigo) — a decision made during AI chat
+🟢 Task Complete (green) — work that was finished
+🟡 Open Question (amber) — something that needs resolution
+🔴 Conflict (red) — a contradiction detected
+Top right: 🔒 Lock icon — clicking marks this session Private
+Title: short description of what happened
+Body: 1-2 line summary
+Footer: timestamp + file tags as small gray pills
+
+Right Panel — Master Context
+Header: '⬡ Master Context · Live'
+Mode 1 indicator row: pulsing violet dot + 'Injecting into all prompts'
+Section: Active Decisions (numbered list)
+Section: Open Questions (amber section)
+Section: Conflicts Detected (red section, with Resolve button)
+Section: Context Health — donut chart percentage
+Bottom: Privacy toggle row (shadcn Switch component)
+
+2.5 — Context Control Features
+These are the three manual controls every user has. They are the heart of the product's interaction design.
+
+Control 1 — Mode 1 Toggle (Master Context On/Off)
+A shadcn Switch component at the top of the center panel
+Label: 'Team Context: ON' or 'Team Context: OFF'
+When ON (violet): Master Context will be injected into all AI prompts via MCP
+When OFF (gray): AI works alone, no team context injected
+State saved to localStorage so it persists between sessions
+A small tooltip on hover explains: 'When ON, your AI knows what your whole team is working on automatically'
+
+Control 2 — Load Peer Context (Mode 2)
+Triggered by '⚡ Load into AI →' button on any team member row
+Loading animation shows for 1.5 seconds with progress steps
+After loading: green banner, violet panel border, their context visible
+A 'Remove' button exits peer context mode, returns to own context
+State saved: which peer is loaded, so if they navigate away and come back it persists
+What 'loaded' means technically: the selected member's full context is stored in a key called activeLoadedContext in localStorage. The MCP server reads this before each prompt and injects it.
+
+Control 3 — Mark Session Private
+A 🔒 icon on the top-right of each context entry card
+Clicking it shows a small confirmation: 'Mark this session private? It will be hidden from teammates and removed from Master Context.'
+Two buttons: 'Make Private' (red) and 'Cancel'
+After confirming: the card gets a 🔒 badge, goes gray/dimmed
+Private sessions are still visible to the owner but not to teammates
+In the right panel privacy section, a toggle shows 'Last session: Private 🔒'
+
+Part 3 — Backend Implementation
+The backend is the brain of ContextMesh. It stores all the context, handles team authentication, runs the Master Context synthesis engine, and serves everything to the frontend and MCP server via a REST API.
+Tech Stack: Python 3.11, FastAPI, PostgreSQL, Redis, LangChain, Anthropic Claude API, ChromaDB. You will run this locally first, then deploy to a simple VPS or Railway.app.
+
+3.1 — Project Setup
+Folder Structure
+contextmesh-backend/
+├── main.py                 ← FastAPI app entry point
+├── requirements.txt        ← All Python dependencies
+├── .env                    ← Your secret keys (never commit)
+│
+├── db/
+│   ├── database.py         ← PostgreSQL connection
+│   ├── models.py           ← Table definitions
+│   └── schemas.py          ← Request/response shapes
+│
+├── routers/
+│   ├── auth.py             ← Create team, join team endpoints
+│   ├── context.py          ← Save/get/load context endpoints
+│   └── master.py           ← Master context endpoints
+│
+├── services/
+│   ├── aggregator.py       ← LLM synthesis engine
+│   ├── conflict.py         ← Conflict detection logic
+│   └── passcode.py         ← Passcode generation
+│
+└── scheduler.py            ← Runs aggregation every 30 min
+
+Install Dependencies
+bash — terminal
+# Create project folder and virtual environment
+mkdir contextmesh-backend && cd contextmesh-backend
+python -m venv venv
+source venv/bin/activate        # Windows: venv\Scripts\activate
+
+# Install all packages
+pip install fastapi uvicorn sqlalchemy psycopg2-binary
+pip install redis langchain anthropic chromadb
+pip install python-dotenv apscheduler pydantic
+
+# Save to requirements.txt
+pip freeze > requirements.txt
+
+.env File — Your Secret Keys
+.env
+# contextmesh-backend/.env
+# Never share this file or commit it to GitHub
+
+DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/contextmesh
+REDIS_URL=redis://localhost:6379
+ANTHROPIC_API_KEY=sk-ant-your-key-here
+SECRET_KEY=any-long-random-string-for-security
+MASTER_CONTEXT_INTERVAL=1800   # 30 minutes in seconds
+
+Start PostgreSQL and Redis (if running locally)
+bash — terminal
+# Option 1: Using Docker (easiest)
+docker run -d --name pg -e POSTGRES_PASSWORD=yourpassword -p 5432:5432 postgres
+docker run -d --name redis -p 6379:6379 redis
+
+# Option 2: Using Homebrew (Mac)
+brew install postgresql redis
+brew services start postgresql
+brew services start redis
+
+# Create the database
+psql -U postgres -c 'CREATE DATABASE contextmesh;'
+
+3.2 — Database Schema
+There are 4 tables in the database. Here is what each one stores and why.
+
+// db/models.py — Full table definitions
+
+TABLE: teams
+  id          → unique team ID (e.g. 'acme-engineering')
+  name        → display name (e.g. 'Acme Engineering')
+  passcode    → hashed team passcode (never store plain text)
+  admin_name  → name of person who created the team
+  created_at  → timestamp
+
+TABLE: members
+  id          → auto-increment
+  team_id     → which team they belong to (FK → teams.id)
+  name        → member's display name
+  joined_at   → when they joined
+
+TABLE: context_sessions
+  id          → auto-increment
+  team_id     → which team (FK → teams.id)
+  member_name → who this session belongs to
+  messages    → full chat history stored as JSON
+  files       → list of files mentioned (JSON array)
+  decisions   → extracted decisions (JSON array)
+  questions   → open questions found (JSON array)
+  is_private  → boolean — private sessions hidden from team
+  created_at  → timestamp of session
+
+TABLE: master_context
+  id          → auto-increment
+  team_id     → which team (FK → teams.id)
+  content     → synthesized context as JSON
+  version     → increment each time it updates
+  updated_at  → last synthesis timestamp
+
+3.3 — Authentication API
+Two endpoints handle everything related to teams and access. They are simple — no JWT tokens, no OAuth. Just passcode matching.
+
+Endpoint 1 — Create Team
+routers/auth.py
+// POST /auth/create-team
+// Called when admin clicks 'Create Team' on frontend
+
+Request body:
+{
+  team_name:  'Acme Engineering',
+  admin_name: 'Arjun Sharma'
+}
+
+What the server does:
+  1. Slugifies team name → 'acme-engineering'
+  2. Generates passcode → 'MANGO-42-ROCKET'
+     (3 random words from a wordlist + 2 random numbers)
+  3. Hashes the passcode with bcrypt before storing
+  4. Saves to teams table
+  5. Saves admin as first member in members table
+
+Response:
+{
+  team_id:  'acme-engineering',
+  passcode: 'MANGO-42-ROCKET',   // plain text, only shown once
+  message:  'Team created successfully'
+}
+
+Endpoint 2 — Join Team
+routers/auth.py
+// POST /auth/join-team
+// Called when member enters passcode on frontend
+
+Request body:
+{
+  passcode:    'MANGO-42-ROCKET',
+  member_name: 'Priya Mehta'
+}
+
+What the server does:
+  1. Searches teams table for a matching passcode hash
+     (uses bcrypt.checkpw to compare)
+  2. If found: adds member to members table
+  3. Returns team info so frontend can load the dashboard
+
+Response (success):
+{
+  team_id:    'acme-engineering',
+  team_name:  'Acme Engineering',
+  member:     'Priya Mehta',
+  all_members: ['Arjun Sharma', 'Priya Mehta', ...]
+}
+
+Response (fail):
+{
+  error: 'Invalid passcode'
+  status: 401
+}
+
+3.4 — Context Store API
+These are the endpoints the MCP server calls automatically. The frontend also calls some of them to display the dashboard.
+
+Endpoint 3 — Save Context Session
+routers/context.py
+// POST /context/save
+// Called by MCP server after every AI session ends
+
+Request body:
+{
+  team_id:     'acme-engineering',
+  member_name: 'Priya Mehta',
+  messages: [
+    { role: 'user',      content: 'should i use JWT or OAuth?' },
+    { role: 'assistant', content: 'For mobile, OAuth2 PKCE...' },
+    // ... all messages from the session
+  ],
+  files_modified: ['auth/middleware.ts', 'config/oauth.ts'],
+  is_private: false
+}
+
+What the server does:
+  1. Validates team_id exists
+  2. Runs quick extraction on messages using LLM:
+     → Finds decisions made
+     → Finds open questions
+     → Finds task completions
+  3. Saves everything to context_sessions table
+  4. Triggers async master context update
+
+Response:
+{ session_id: 847, saved: true }
+
+Endpoint 4 — Get Member Context
+routers/context.py
+// GET /context/member?team_id=acme&member=Priya+Mehta
+// Called by frontend when 'View Context' or 'Load into AI' clicked
+
+Response:
+{
+  member: 'Priya Mehta',
+  sessions: [
+    {
+      id: 847,
+      created_at: '2025-03-13T14:30:00Z',
+      messages: [...],     // full chat history
+      decisions: ['OAuth2 PKCE for mobile', ...],
+      questions: ['Webhook retry logic?', ...],
+      files: ['auth/middleware.ts'],
+      is_private: false
+    },
+    // ... more sessions
+  ]
+}
+
+Endpoint 5 — Mark Session Private
+routers/context.py
+// PATCH /context/session/{session_id}/private
+// Called when user clicks the lock icon on a session card
+
+Request body:
+{ is_private: true }
+
+What the server does:
+  1. Updates is_private = true in context_sessions table
+  2. Triggers re-synthesis of Master Context
+     (so the private session is removed from it)
+
+Response:
+{ session_id: 847, is_private: true, updated: true }
+
+3.5 — Master Context Engine
+This is the most important part of the backend. It is a scheduled job that runs every 30 minutes. It reads all non-private sessions from the team and uses an LLM (Claude) to synthesize them into one Master Context document.
+
+How The Synthesis Works — Step by Step
+Scheduler triggers every 30 minutes (or after a new session is saved)
+Fetches all non-private sessions for the team from the past 7 days
+Groups sessions by member name
+Sends everything to Claude API with this prompt:
+
+services/aggregator.py
+// services/aggregator.py — The LLM prompt
+
+SYSTEM PROMPT:
+You are a technical context synthesizer for an engineering team.
+Given multiple AI chat sessions from different team members,
+extract and synthesize a clean Master Context.
+
+USER PROMPT:
+Here are recent AI sessions from the team:
+
+[MEMBER: Priya Mehta]
+Session 1: {messages...}
+Session 2: {messages...}
+
+[MEMBER: Arjun Sharma]
+Session 1: {messages...}
+
+Return a JSON object with exactly these keys:
+{
+  decisions: [{ text, made_by, confidence }],
+  in_progress: [{ task, member, files }],
+  open_questions: [{ question, flagged_by }],
+  conflicts: [
+    { topic, member_a, says_a, member_b, says_b }
+  ]
+}
+
+Only include things explicitly mentioned. Do not invent anything.
+
+Claude returns structured JSON
+JSON is saved to master_context table with a new version number
+Also cached in Redis for fast retrieval (expires in 35 minutes)
+
+Endpoint 6 — Get Master Context
+routers/master.py
+// GET /master-context?team_id=acme-engineering
+// Called by MCP server at start of every AI session
+// Also called by frontend right panel
+
+What the server does:
+  1. Checks Redis cache first (fast, under 10ms)
+  2. If cache miss: reads from master_context table
+  3. Returns latest version
+
+Response:
+{
+  version: 47,
+  updated_at: '2025-03-13T14:00:00Z',
+  decisions: [
+    { text: 'OAuth2 PKCE for mobile', made_by: 'Priya', confidence: 0.95 },
+    { text: 'Redis rate limiting 1000/min', made_by: 'Arjun', confidence: 0.88 }
+  ],
+  in_progress: [
+    { task: 'API Gateway v2', member: 'Priya', files: ['gateway/router.ts'] }
+  ],
+  open_questions: [
+    { question: 'Webhook retry logic?', flagged_by: 'Priya' }
+  ],
+  conflicts: [
+    { topic: 'Rate limiting', member_a: 'Arjun', says_a: 'per-IP',
+      member_b: 'Priya', says_b: 'per-tenant' }
+  ]
+}
+
+3.6 — Conflict Detection
+Conflict detection runs as part of the aggregation step. When the LLM synthesizes the Master Context, it is also instructed to find contradictions. But you can add a secondary check too.
+
+services/conflict.py
+// services/conflict.py — Additional conflict check
+
+// After synthesis, run this secondary check:
+// Take all decisions from current Master Context
+// Compare pairwise using embeddings similarity
+// If two decisions are about the same topic (similarity > 0.85)
+// but say different things → flag as conflict
+
+Example conflicts this catches:
+  Decision A (Arjun): 'Rate limit per IP address'
+  Decision B (Priya): 'Rate limit per tenant account'
+  → Same topic (rate limiting), different approach → CONFLICT
+
+  Decision A (Arjun): 'Use PostgreSQL for main database'
+  Decision B (Rahul): 'Use PostgreSQL for persistence'
+  → Same topic, compatible statements → NOT a conflict
+
+Part 4 — MCP Server Build
+The MCP server is what makes ContextMesh actually work inside AI coding tools. It is a small Node.js package that installs into Cursor, Claude Code, Codex, or any MCP-compatible tool. It runs silently in the background — capturing sessions and injecting context — without the engineer doing anything manually.
+Tech: Node.js + TypeScript, @modelcontextprotocol/sdk package. Published as contextmesh-mcp on npm (or installed from GitHub directly).
+
+4.1 — What The MCP Server Does
+The MCP server exposes 4 tools to the AI:
+
+TOOL 1: get_master_context
+  When: Called automatically at the start of every session
+  Does: Fetches current Master Context from backend
+  Result: AI session begins knowing what the whole team knows
+  Respects: Mode 1 toggle — if OFF, this tool returns empty
+
+TOOL 2: save_context
+  When: Called automatically when a session ends
+  Does: Sends full chat history to backend /context/save
+  Result: Session stored, Master Context scheduled for update
+
+TOOL 3: load_peer_context
+  When: Called when engineer says 'load X context' or
+        clicks 'Load into AI' button on dashboard
+  Does: Fetches named member's full context from backend
+  Result: Their history injected into the current session
+
+TOOL 4: mark_private
+  When: Called when engineer says 'mark this private' or
+        clicks the lock icon on a session card
+  Does: Calls backend PATCH /context/session/{id}/private
+  Result: Session excluded from Master Context + peer loading
+
+4.2 — MCP Server Project Setup
+bash — terminal
+# Create the MCP server project
+mkdir contextmesh-mcp && cd contextmesh-mcp
+npm init -y
+npm install @modelcontextprotocol/sdk axios
+npm install -D typescript @types/node ts-node
+
+# Create tsconfig.json
+npx tsc --init
+
+Folder Structure
+contextmesh-mcp/
+├── package.json
+├── tsconfig.json
+└── src/
+    ├── index.ts          ← Main MCP server entry point
+    ├── tools/
+    │   ├── getMasterContext.ts
+    │   ├── saveContext.ts
+    │   ├── loadPeerContext.ts
+    │   └── markPrivate.ts
+    └── api.ts            ← Shared function to call backend
+
+4.3 — The 4 MCP Tools (Code)
+Tool 1 — get_master_context
+src/tools/getMasterContext.ts
+// src/tools/getMasterContext.ts
+
+export const getMasterContextTool = {
+  name: 'get_master_context',
+  description: 'Fetch the team Master Context — shared knowledge',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      team_id: { type: 'string', description: 'Your team ID' }
+    },
+    required: ['team_id']
+  },
+  handler: async ({ team_id }) => {
+    // Check if Mode 1 toggle is ON (stored in local config)
+    if (!config.masterContextEnabled) return { context: null };
+
+    const response = await api.get(`/master-context?team_id=${team_id}`);
+    return { context: response.data };
+  }
+};
+
+Tool 2 — save_context
+src/tools/saveContext.ts
+// src/tools/saveContext.ts
+
+export const saveContextTool = {
+  name: 'save_context',
+  description: 'Save the current AI session to team context',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      team_id:        { type: 'string' },
+      member_name:    { type: 'string' },
+      messages:       { type: 'array' },   // full chat history
+      files_modified: { type: 'array' },   // files touched
+      is_private:     { type: 'boolean' }  // default false
+    },
+    required: ['team_id', 'member_name', 'messages']
+  },
+  handler: async (params) => {
+    const response = await api.post('/context/save', params);
+    return { saved: true, session_id: response.data.session_id };
+  }
+};
+
+Tool 3 — load_peer_context
+src/tools/loadPeerContext.ts
+// src/tools/loadPeerContext.ts
+
+export const loadPeerContextTool = {
+  name: 'load_peer_context',
+  description: 'Load a teammate context into current AI session',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      team_id:     { type: 'string' },
+      member_name: { type: 'string', description: 'Whose context to load' }
+    },
+    required: ['team_id', 'member_name']
+  },
+  handler: async ({ team_id, member_name }) => {
+    const response = await api.get(
+      `/context/member?team_id=${team_id}&member=${member_name}`
+    );
+    // Returns full chat history + decisions for that member
+    return { peer_context: response.data };
+  }
+};
+
+Tool 4 — mark_private
+src/tools/markPrivate.ts
+// src/tools/markPrivate.ts
+
+export const markPrivateTool = {
+  name: 'mark_private',
+  description: 'Mark the current or a specific session as private',
+  inputSchema: {
+    type: 'object',
+    properties: {
+      session_id: { type: 'number' }
+    },
+    required: ['session_id']
+  },
+  handler: async ({ session_id }) => {
+    await api.patch(`/context/session/${session_id}/private`,
+      { is_private: true }
+    );
+    return { marked_private: true, session_id };
+  }
+};
+
+4.4 — Platform Config Files
+Once your MCP server is built and published (or running locally), each team member adds one small config file to their AI tool. The MCP server itself is the same for everyone — only the config changes.
+
+For Claude Code
+~/.claude/claude_desktop_config.json
+// File location: ~/.claude/claude_desktop_config.json
+
+{
+  "mcpServers": {
+    "contextmesh": {
+      "command": "npx",
+      "args": ["contextmesh-mcp"],
+      "env": {
+        "TEAM_ID": "acme-engineering",
+        "MEMBER_NAME": "Priya Mehta",
+        "CONTEXTMESH_API": "http://localhost:8000",
+        "MASTER_CONTEXT_ENABLED": "true"
+      }
+    }
+  }
+}
+
+For Cursor
+~/.cursor/mcp.json
+// File location: ~/.cursor/mcp.json (global for all projects)
+// OR: .cursor/mcp.json inside a specific project folder
+
+{
+  "mcpServers": {
+    "contextmesh": {
+      "command": "npx",
+      "args": ["contextmesh-mcp"],
+      "env": {
+        "TEAM_ID": "acme-engineering",
+        "MEMBER_NAME": "Priya Mehta",
+        "CONTEXTMESH_API": "http://localhost:8000"
+      }
+    }
+  }
+}
+
+For OpenAI Codex CLI
+~/.codex/config.json
+// File location: ~/.codex/config.json
+
+{
+  "mcpServers": [
+    {
+      "name": "contextmesh",
+      "command": "npx contextmesh-mcp",
+      "env": {
+        "TEAM_ID": "acme-engineering",
+        "MEMBER_NAME": "Priya Mehta",
+        "CONTEXTMESH_API": "http://localhost:8000"
+      }
+    }
+  ]
+}
+
+For Cline, Windsurf, or any VS Code MCP Tool
+.vscode/settings.json
+// File location: .vscode/settings.json (inside your project)
+
+{
+  "cline.mcpServers": {
+    "contextmesh": {
+      "command": "npx",
+      "args": ["contextmesh-mcp"],
+      "env": {
+        "TEAM_ID": "acme-engineering",
+        "MEMBER_NAME": "Priya Mehta",
+        "CONTEXTMESH_API": "http://localhost:8000"
+      }
+    }
+  }
+}
+The CONTEXTMESH_API value points to wherever your backend is running. During development this is localhost:8000. When you deploy the backend to Railway or a VPS, replace with the public URL.
+
+Part 5 — Connecting Frontend + Backend + MCP
+Once all three pieces are built separately, here is exactly how to wire them together so they talk to each other correctly.
+
+5.1 — Frontend → Backend Connection
+Replace all localStorage logic in the Lovable frontend with real API calls to the backend. These are the exact swaps to make:
+
+src/api.js — add to your Lovable project
+// BEFORE (localStorage only):
+const team = JSON.parse(localStorage.getItem('team'));
+
+// AFTER (real backend):
+const response = await fetch('http://localhost:8000/auth/join-team', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ passcode, member_name })
+});
+const team = await response.json();
+localStorage.setItem('currentUser', JSON.stringify(team)); // keep for session
+
+// Replace every localStorage data call with a fetch() to the API
+// Create a src/api.js file in your Lovable project:
+
+export const API = 'http://localhost:8000'; // change when deployed
+
+export const createTeam = (teamName, adminName) =>
+  fetch(`${API}/auth/create-team`, { method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ team_name: teamName, admin_name: adminName }) })
+  .then(r => r.json());
+
+export const joinTeam = (passcode, memberName) =>
+  fetch(`${API}/auth/join-team`, { method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ passcode, member_name: memberName }) })
+  .then(r => r.json());
+
+export const getMasterContext = (teamId) =>
+  fetch(`${API}/master-context?team_id=${teamId}`).then(r => r.json());
+
+export const getMemberContext = (teamId, memberName) =>
+  fetch(`${API}/context/member?team_id=${teamId}&member=${memberName}`)
+  .then(r => r.json());
+
+5.2 — MCP Server → Backend Connection
+The MCP server connects to the backend through the api.ts file. Here is the complete shared API helper:
+
+src/api.ts
+// contextmesh-mcp/src/api.ts
+
+import axios from 'axios';
+
+const BACKEND_URL = process.env.CONTEXTMESH_API || 'http://localhost:8000';
+
+export const api = axios.create({
+  baseURL: BACKEND_URL,
+  timeout: 10000,
+  headers: { 'Content-Type': 'application/json' }
+});
+
+// Helper: read config from environment variables
+export const config = {
+  teamId:               process.env.TEAM_ID || '',
+  memberName:           process.env.MEMBER_NAME || '',
+  masterContextEnabled: process.env.MASTER_CONTEXT_ENABLED !== 'false',
+};
+
+5.3 — Running Everything Locally (Full Stack)
+bash — run in separate terminals
+# Terminal 1: Start PostgreSQL + Redis (if using Docker)
+docker start pg redis
+
+# Terminal 2: Start Backend
+cd contextmesh-backend
+source venv/bin/activate
+uvicorn main:app --reload --port 8000
+# Backend now running at http://localhost:8000
+
+# Terminal 3: MCP server (for local testing)
+cd contextmesh-mcp
+npm run build
+TEAM_ID=acme MEMBER_NAME='Test User' node dist/index.js
+
+# Frontend: Already running on Lovable
+# Just update the API URL in src/api.js to http://localhost:8000
+# For production: deploy backend to Railway.app and update the URL
+
+Part 6 — Week-by-Week Build Order
+Here is the recommended order to build everything. Each week has a clear goal and a clear 'done' definition so you know when to move on.
+
+Week 1 — Frontend Flows on Lovable
+Goal: Complete the frontend with real Create Team + Login + Dashboard
+
+1
+Add 'Create Team' and 'Enter Team' buttons to navbar and hero section
+
+2
+Build the Create Team modal (3 steps: team name → your name → success screen)
+
+3
+Build the Enter Team modal (passcode + name → join)
+
+4
+Build the /dashboard page with 3-panel layout
+
+5
+Add the Mode 1 toggle to center panel (localStorage only for now)
+
+6
+Add the 'Load into AI →' button with loading animation and loaded state
+
+7
+Add the Mark Private lock icon and confirmation flow
+
+
+Done when: You can create a team, share the passcode with a friend, they join, and you both see the same team dashboard with each other's names.
+
+Week 2 — Backend Foundation
+Goal: Backend running locally with auth and context storage working
+
+1
+Set up Python project, install dependencies, create .env file
+
+2
+Set up PostgreSQL — create database, run migrations to create 4 tables
+
+3
+Set up Redis locally
+
+4
+Build POST /auth/create-team endpoint — generates passcode, saves to DB
+
+5
+Build POST /auth/join-team endpoint — validates passcode, adds member
+
+6
+Build POST /context/save endpoint — accepts session data, stores to DB
+
+7
+Build GET /context/member endpoint — returns member's sessions
+
+8
+Test all 4 endpoints using Postman or the FastAPI auto-docs at /docs
+
+
+Done when: You can hit /auth/create-team via Postman and get back a real team ID and passcode. You can then hit /auth/join-team with that passcode and successfully join.
+
+Week 3 — Master Context Engine
+Goal: LLM synthesis pipeline running, Master Context updating automatically
+
+1
+Set up Anthropic API key in .env, test a basic API call
+
+2
+Write the aggregator.py service — the LLM prompt for synthesis
+
+3
+Build GET /master-context endpoint — returns latest synthesized context
+
+4
+Build PATCH /context/session/{id}/private endpoint
+
+5
+Add Redis caching to master context endpoint
+
+6
+Set up APScheduler to run aggregation every 30 minutes automatically
+
+7
+Add the conflict.py service — secondary conflict detection using embeddings
+
+8
+Test full flow: save 2 sessions → wait for aggregation → check /master-context
+
+
+Done when: You can save two sessions from two different members, wait 30 seconds (reduce interval for testing), and see a synthesized Master Context returned from the API with decisions from both members.
+
+Week 4 — MCP Server
+Goal: MCP server running inside Claude Code, capturing real sessions
+
+1
+Set up Node.js MCP project, install @modelcontextprotocol/sdk
+
+2
+Write the api.ts shared helper pointing to your local backend
+
+3
+Build the get_master_context tool
+
+4
+Build the save_context tool
+
+5
+Build the load_peer_context tool
+
+6
+Build the mark_private tool
+
+7
+Write the main index.ts that registers all 4 tools
+
+8
+Add the config file to Claude Code and test: does it capture a real session?
+
+
+Done when: You have a real conversation with Claude Code, end the session, and then check your backend database to see the chat history was actually saved. This is the most satisfying moment in the whole build.
+
+Week 5 — Connect Frontend to Real Backend
+Goal: Replace all localStorage with real API calls, full product working end-to-end
+
+1
+Add src/api.js to Lovable frontend with all API helper functions
+
+2
+Replace Create Team localStorage logic with real /auth/create-team call
+
+3
+Replace Join Team localStorage logic with real /auth/join-team call
+
+4
+Replace dashboard data with real /context/member API calls
+
+5
+Replace Master Context panel with real /master-context API call
+
+6
+Wire up the Mode 1 toggle — ON calls MCP to inject context, OFF skips it
+
+7
+Wire up Load Peer Context button — calls /context/member for selected member
+
+8
+Wire up Mark Private — calls PATCH /context/session/{id}/private
+
+
+Done when: Two team members on different devices can create/join the same team, both use Claude Code with the MCP server installed, and both can see each other's context in the dashboard in real time.
+
+Week 6 — Add Cursor + Codex Support + Polish
+Goal: MCP works in Cursor and Codex, product is demo-ready
+
+1
+Add the Cursor config file, test MCP server in Cursor
+
+2
+Add the Codex CLI config file, test
+
+3
+Add Cline / Windsurf config, test
+
+4
+Add error handling to all backend endpoints
+
+5
+Add loading states and error messages to frontend
+
+6
+Deploy backend to Railway.app (free tier, one click from GitHub)
+
+7
+Update all API URLs in frontend and MCP configs to production URL
+
+8
+Full end-to-end test with real team members on real devices
+
+
+Done when: The product is fully live. Someone can visit context-mesh-hub.lovable.app, create a team, install the MCP server in their AI tool, and have their sessions captured and shared with their team — on any of the 4 supported platforms.
+
+Quick Reference — All Endpoints
+
+Method
+Endpoint
+What it does
+POST
+/auth/create-team
+Admin creates a new team, get back team ID + passcode
+POST
+/auth/join-team
+Member joins with passcode, get back team info
+POST
+/context/save
+MCP server saves a completed AI session
+GET
+/context/member
+Get all sessions for a specific team member
+PATCH
+/context/session/{id}/private
+Mark a session as private
+GET
+/master-context
+Get the latest synthesized team Master Context
+
+⬡  ContextMesh  ·  Technical Implementation Roadmap
+For Internal Use Only  ·  Team ContextMesh  ·  2025

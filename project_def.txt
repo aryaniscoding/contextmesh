@@ -1,0 +1,282 @@
+
+⬡
+CONTEXTMESH
+Shared AI Memory Layer for Engineering Teams
+Project Definition Document
+Team ContextMesh  ·  Domain: Machine Learning and Pattern Recognition (ML)  ·  2025
+
+Domain
+ML & Pattern Recognition
+Type
+Open Source + SaaS
+License
+MIT
+Status
+Active Development
+
+1. Executive Summary
+ContextMesh is an AI memory infrastructure platform that solves one of the most critical and overlooked problems in modern engineering teams: the complete loss of AI-generated knowledge when a team member leaves, transfers, or takes a break.
+When engineers use AI tools — Claude, Cursor, GitHub Copilot — they build up rich, session-specific context over days and weeks. Every decision, every reasoning trail, every line of code discussed exists only in that person's AI session. ContextMesh captures all of it, structures it, and makes it available to the entire team.
+The result: any team member can load any colleague's full AI context into their own session with one click — and their AI immediately knows what that person knew, decided, and built.
+
+2. The Problem
+2.1  The Knowledge Silo Crisis
+In AI-assisted engineering teams, every person's AI exists in isolation. When a developer has a 2-hour session with their AI working through an architectural decision, that reasoning lives only in that chat window. When the session ends — it is gone.
+This creates three compounding problems:
+Context loss: Decisions made in AI sessions are never documented. The reasoning behind code is invisible.
+Broken handoffs: When someone leaves or transfers work, the new person starts from zero. Weeks of AI-assisted progress is inaccessible.
+Redundant work: Other team members re-explore the same solutions their colleagues already worked through with their AI — wasting hours daily.
+
+100%
+of AI chat history is lost
+when a session ends without ContextMesh
+3–4 Weeks
+average engineer onboarding time
+when AI context is not preserved
+1 Click
+to load any teammate's full
+AI context with ContextMesh
+
+3. The Solution — ContextMesh
+ContextMesh is a two-mode AI context management system that runs alongside your team's existing AI tools. It requires zero changes to how engineers work — it captures context as a natural byproduct of AI usage.
+3.1  Mode 1: Passive Team Context (Always On, Toggleable)
+The Master Context is silently injected into every AI prompt as a system-level context. Every team member's AI automatically knows:
+What decisions the team has made
+Who owns what parts of the codebase
+What is currently being worked on
+What open questions need resolution
+Engineers can toggle this OFF at any time — for personal work, exploratory sessions, or anything they want kept separate from the team context.
+
+// Every prompt sent to AI automatically includes:
+
+SYSTEM: You are an AI assistant with access to the team context below.
+
+MASTER CONTEXT (auto-injected, toggleable):
+  ├─ Active Decisions: OAuth2 PKCE for mobile, Redis rate limiting
+  ├─ In Progress: Priya → API Gateway v2, Arjun → Auth refactor
+  ├─ Open Questions: Webhook retry logic (Priya), SDK scope (TBD)
+  └─ Conflicts: Rate limit per-IP vs per-tenant [UNRESOLVED]
+
+USER: How should I approach the auth rate limiting?
+AI:   Based on the team context, there is currently a conflict...
+
+3.2  Mode 2: Peer Context Loading (Manual, On Demand)
+When a team member needs to work on someone else's code or continue their work, they click 'Load Context' next to that person's name. The following is injected into their AI session:
+The colleague's full raw AI chat history (all sessions)
+Their decisions, reasoning trails, and code discussions
+Files they modified and the context around those changes
+Open questions and blockers they flagged
+
+// A clicks 'Load Priya's Context'
+
+LOADING PRIYA MEHTA'S CONTEXT:
+  ✓ Raw chat history — 127 sessions fetched
+  ✓ Code context — 23 files referenced
+  ✓ Decisions extracted — 34 logged
+  ✓ Open questions — 6 pending
+
+STATUS: Priya's context loaded into your AI session.
+
+// A can now ask:
+USER: Continue the API gateway routing work Priya was doing
+AI:   Based on Priya's sessions, she was using pattern-based
+      routing with versioning at /v1/, /v2/. Her last session
+      was implementing retry logic — here is where she left off...
+
+4. Privacy Model
+ContextMesh is designed with privacy as a first-class concern. The system follows an auto-share model with selective private marking:
+
+Rule
+Detail
+Default
+All sessions auto-shared to Master Context and available for peer loading
+Mark Private 🔒
+Any session can be marked private — excluded from Master Context and blocked from peer loading
+Peer Loading
+Only non-private sessions are loadable by teammates
+Admin Controls
+Team admins can set: who can load whose context, context expiry window (e.g. last 30 days only)
+Data Ownership
+Self-hosted: all data stays on your infrastructure. Cloud: encrypted at rest, SOC2 planned.
+
+5. Key Features
+
+
+Feature
+Description
+💬
+Full Chat History Capture
+Every AI session logged in full — raw messages, reasoning, code discussions. Not summaries. Complete record per person.
+🧠
+Master Context Synthesis
+LLM aggregation engine reads all individual stores and builds a living team knowledge base. Auto-updated continuously.
+🔄
+One-Click Peer Context Loading
+Load any teammate's full AI context (raw history + decisions + code) into your own session. Continue exactly where they stopped.
+📦
+Handoff Snapshots
+Auto-generated when ownership transfers. New member's AI initialized with complete context — zero ramp-up time.
+⚡
+Context Toggle
+Master Context injection can be toggled ON/OFF per session. Engineers stay in control of when team context is used.
+🔍
+Semantic Search
+Query the entire team's AI history in natural language. Find any decision, discussion, or reasoning trail instantly.
+⚠️
+Conflict Detection
+Flags when two team members' AI contexts describe the same thing differently. Surfaces contradictions before they become bugs.
+🔒
+Privacy Controls
+Any session can be marked private. Private sessions are excluded from Master Context and cannot be loaded by teammates.
+
+6. System Architecture
+6.1  Data Flow
+Engineer uses AI tool (Claude / Cursor / GitHub Copilot)
+              │
+              ▼
+    ContextMesh MCP Plugin
+    (captures full session after completion)
+              │
+              ▼
+  Individual Context Store (per person, private)
+  ├─ Raw chat history
+  ├─ Extracted decisions
+  ├─ Files modified
+  └─ Open questions
+              │
+              ▼
+   LLM Aggregation Engine (runs every 30 min)
+   Reads all non-private individual stores
+              │
+              ▼
+      Master Context (shared team knowledge)
+      ├─ Active decisions
+      ├─ Work in progress
+      ├─ Open questions
+      └─ Detected conflicts
+              │
+    ┌─────────┴──────────┐
+    ▼                    ▼
+Mode 1: Auto-inject    Mode 2: On-demand peer
+into all prompts       context loading
+(toggleable)           (manual button click)
+
+6.2  Tech Stack
+Component
+Technology
+MCP Plugin
+Model Context Protocol server — integrates with Claude, Cursor, Copilot, Cline, Windsurf
+Individual Context Store
+Mem0 / ChromaDB — vector embeddings per session, fast retrieval
+Aggregation Engine
+LangChain + Claude API — LLM pipeline for synthesis and conflict detection
+Master Context Store
+PostgreSQL + Redis — structured storage with semantic search
+Backend API
+FastAPI (Python) — REST + WebSocket for real-time sync
+Frontend Dashboard
+Next.js + shadcn/ui — team context viewer and controls
+Self-Hosted Deploy
+Docker Compose — single command deployment
+Cloud Hosting
+Managed cloud option with per-seat pricing
+
+7. Competitive Landscape
+
+Feature
+ContextMesh ⬡
+Mem0
+Copilot Spaces
+Manual Docs
+Full raw AI chat history capture
+✓
+✗
+✗
+✗
+Auto Master Context synthesis
+✓
+✗
+✗
+✗
+One-click peer context loading
+✓
+✗
+✗
+✗
+Passive context injection (toggle)
+✓
+✗
+Partial
+✗
+Handoff snapshot generation
+✓
+✗
+✗
+Manual
+Semantic search across team
+✓
+✓
+✗
+✗
+Conflict detection
+✓
+✗
+✗
+✗
+Works with any AI tool (MCP)
+✓
+✓
+✗
+✓
+Self-hostable + open source
+✓
+✓
+✗
+✓
+Zero manual documentation
+✓
+✗
+✗
+✗
+
+8. Deployment Options
+☁️  Cloud (SaaS)
+🖥️  Self-Hosted
+Up and running in minutes
+Managed infrastructure
+Per-seat pricing
+SOC2 compliance planned
+contextmesh.dev
+Full data ownership
+Deploy via Docker Compose
+MIT licensed — free forever
+Enterprise support available
+docker run contextmesh/server
+
+9. Project Abstract (250 Words)
+In modern software organizations, AI-assisted development has become central to daily workflows. Team members leverage AI tools to write code, make architectural decisions, and build features — accumulating rich, session-specific context over time. However, this knowledge remains siloed within each person's AI environment. When a team member leaves, transfers roles, or goes on leave, all accumulated AI context — the full chat history, the reasoning, the decisions — vanishes entirely. The next person rebuilds from scratch, causing redundancy, inconsistency, and significant productivity loss.
+ContextMesh is a shared AI memory platform that eliminates this knowledge loss. The system operates in two modes. In passive mode, a Master Context — synthesized continuously from all team members' AI sessions using LLM aggregation and vector embeddings — is silently injected into every prompt, giving every team member's AI automatic awareness of team decisions, ongoing work, and open questions. Engineers can toggle this off at any time. In active mode, any team member can click 'Load Context' next to a colleague's name to inject that person's full raw AI chat history, decisions, and code context directly into their own AI session — allowing them to continue that person's work instantly with complete situational awareness.
+ContextMesh integrates via Model Context Protocol with any AI tool including Claude, Cursor, and GitHub Copilot. Privacy is maintained through a selective opt-out model — sessions are auto-shared by default but any session can be marked private. The system is fully open-source, MIT licensed, self-hostable via Docker, and available as a managed cloud service. By treating team AI context as shared organizational infrastructure, ContextMesh ensures no critical knowledge is ever lost.
+
+10. Team ContextMesh
+ContextMesh is built by a team of engineers passionate about making AI work better for teams — not just individuals.
+
+●
+Member 1
+AI Systems Engineer
+MCP plugin, context capture
+●
+Member 2
+ML Engineer
+LLM aggregation, conflict detection
+●
+Member 3
+Full-Stack Developer
+Dashboard, API, self-hosted infra
+●
+Member 4
+Product & Research
+UX, privacy model, documentation
+
+"No knowledge left behind."
+— Team ContextMesh, 2025

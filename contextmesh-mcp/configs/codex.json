@@ -1,0 +1,13 @@
+{
+  "mcpServers": [
+    {
+      "name": "contextmesh",
+      "command": "npx contextmesh-mcp",
+      "env": {
+        "TEAM_ID": "acme-engineering",
+        "MEMBER_NAME": "Priya Mehta",
+        "CONTEXTMESH_API": "http://localhost:8000"
+      }
+    }
+  ]
+}

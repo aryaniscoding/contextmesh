@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "contextmesh": {
+      "command": "node",
+      "args": [
+        "C:\\Users\\Aryan\\AppData\\Roaming\\npm\\node_modules\\contextmesh-connect\\bin\\cli.js",
+        "start"
+      ],
+      "env": {}
+    }
+  }
+}
