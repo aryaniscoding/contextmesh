@@ -27,6 +27,16 @@ export const loadPeerContextTool = {
         let text = `--- Session ${s.id} (${s.created_at}) ---\n`;
         if (s.decisions.length) text += `Decisions: ${s.decisions.join(", ")}\n`;
         if (s.files.length) text += `Files touched: ${s.files.join(", ")}\n`;
+        
+        // Include a snippet of the raw chat if available, to give the AI context even without decisions
+        if (s.messages && s.messages.length > 0) {
+          const userMsgs = s.messages.filter(m => m.role === 'user').map(m => m.content);
+          if (userMsgs.length > 0) {
+            const preview = userMsgs.join(" | ").substring(0, 150);
+            text += `Chat preview: "${preview}..."\n`;
+          }
+        }
+        
         return text;
       }).join("\n\n");
 

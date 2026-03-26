@@ -1,4 +1,5 @@
 import { getApi } from "../api.js";
+import { getConfig } from "../../utils/config.js";
 
 export const getMasterContextTool = {
   name: "get_master_context",
@@ -9,8 +10,11 @@ export const getMasterContextTool = {
   },
   handler: async (args) => {
     try {
+      // Always read fresh config to pick up account changes
+      const config = getConfig();
+      const teamId = config?.teamId || args.team_id;
       const api = getApi();
-      const res = await api.get(`/master-context?team_id=${args.team_id}`);
+      const res = await api.get(`/master-context?team_id=${teamId}`);
       
       return {
         content: [

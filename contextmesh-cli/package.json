@@ -1,10 +1,9 @@
 {
   "name": "contextmesh-connect",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "",
   "type": "module",
   "bin": {
-    "contextmesh": "./bin/cli.js",
     "contextmesh-connect": "./bin/cli.js"
   },
   "scripts": {
