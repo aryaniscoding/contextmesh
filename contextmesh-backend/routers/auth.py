@@ -15,6 +15,20 @@ from services.passcode import generate_passcode, hash_passcode, verify_passcode
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 
+@router.get("/team-info")
+def get_team_info(team_id: str, db: Session = Depends(get_db)):
+    """Return current team name and members list (used by dashboard polling)."""
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    members = db.query(Member.name).filter(Member.team_id == team_id).all()
+    return {
+        "team_id": team.id,
+        "team_name": team.name,
+        "members": [m[0] for m in members],
+    }
+
+
 @router.post("/create-team", response_model=CreateTeamResponse)
 def create_team(req: CreateTeamRequest, db: Session = Depends(get_db)):
     """

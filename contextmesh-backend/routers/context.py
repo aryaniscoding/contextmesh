@@ -1,16 +1,35 @@
 """Context Store router — Save, Get, and Privacy endpoints."""
+import asyncio
+import threading
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
-from db.database import get_db
+from db.database import get_db, SessionLocal
 from db.models import Team, ContextSession
 from db.schemas import (
     SaveContextRequest, SaveContextResponse,
     MemberContextResponse, SessionOut,
     MarkPrivateRequest, MarkPrivateResponse,
 )
+from services.aggregator import synthesize_master_context
 
 router = APIRouter(prefix="/context", tags=["Context"])
+
+
+def _trigger_synthesis(team_id: str):
+    """Run master context synthesis in a background thread."""
+    def _run():
+        db = SessionLocal()
+        try:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            loop.run_until_complete(synthesize_master_context(team_id, db))
+            loop.close()
+        except Exception:
+            pass
+        finally:
+            db.close()
+    threading.Thread(target=_run, daemon=True).start()
 
 
 @router.post("/save", response_model=SaveContextResponse)
@@ -41,6 +60,10 @@ def save_context(req: SaveContextRequest, db: Session = Depends(get_db)):
     db.add(session)
     db.commit()
     db.refresh(session)
+
+    # Trigger master context synthesis in background
+    if not req.is_private:
+        _trigger_synthesis(req.team_id)
 
     return SaveContextResponse(session_id=session.id)
 
@@ -100,3 +123,39 @@ def mark_session_private(
     db.commit()
 
     return MarkPrivateResponse(session_id=session_id, is_private=req.is_private)
+
+
+@router.get("/all")
+def get_all_team_context(
+    team_id: str = Query(..., description="Team ID"),
+    db: Session = Depends(get_db),
+):
+    """
+    Get ALL non-private sessions for the entire team.
+    Used by the frontend 'View All Prompts' feature.
+    """
+    sessions = (
+        db.query(ContextSession)
+        .filter(
+            ContextSession.team_id == team_id,
+            ContextSession.is_private == False,
+        )
+        .order_by(ContextSession.created_at.desc())
+        .limit(100)
+        .all()
+    )
+
+    return {
+        "team_id": team_id,
+        "sessions": [
+            {
+                "id": s.id,
+                "member_name": s.member_name,
+                "created_at": s.created_at.isoformat(),
+                "messages": s.messages or [],
+                "files": s.files or [],
+                "is_private": s.is_private,
+            }
+            for s in sessions
+        ],
+    }

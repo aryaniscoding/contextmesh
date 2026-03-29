@@ -1,16 +1,25 @@
 {
-  "name": "contextmesh-connect",
-  "version": "1.0.2",
-  "description": "",
+  "name": "contextmesh-cli",
+  "version": "1.0.1",
+  "description": "ContextMesh CLI and MCP server for team memory",
   "type": "module",
   "bin": {
-    "contextmesh": "./bin/cli.js",
     "contextmesh-connect": "./bin/cli.js"
   },
+  "files": [
+    "bin/**/*.js",
+    "src/**/*.js"
+  ],
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
-  "keywords": [],
+  "keywords": [
+    "mcp",
+    "contextmesh",
+    "ai",
+    "context",
+    "team"
+  ],
   "author": "",
   "license": "ISC",
   "dependencies": {
