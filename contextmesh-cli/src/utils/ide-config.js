@@ -1,12 +1,6 @@
 import fs from "fs";
 import path from "path";
 import os from "os";
-import { fileURLToPath } from "url";
-
-// Get current directory in ESM
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-// Resolve the absolute path to bin/cli.js
-const cliPath = path.resolve(__dirname, "../../bin/cli.js");
 
 // Detect if we are on Windows or Mac/Linux
 const isWin = os.platform() === "win32";
@@ -28,10 +22,11 @@ function writeJsonSafe(filePath, data) {
   fs.writeFileSync(filePath, JSON.stringify(data, null, 2));
 }
 
+// Use npx to resolve the package — works on any machine that has npm installed
 const contextMeshPayload = {
-  command: process.execPath || "node",
-  args: [cliPath, "start"],
-  env: {} // Env injected dynamically by start command
+  command: "npx",
+  args: ["-y", "contextmesh-cli", "start"],
+  env: {}
 };
 
 
