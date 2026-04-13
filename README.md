@@ -6,7 +6,7 @@ ContextMesh is a shared AI memory layer for engineering teams. It connects your 
 The project consists of three main parts:
 1. **Frontend (ContextMesh Hub)**: A React dashboard to view team context and master context summaries.
 2. **Backend**: A FastAPI & PostgreSQL server that stores context, manages authentication, and runs background LLM summarization.
-3. **CLI & MCP Server**: A Node.js CLI tool (`contextmesh-connect`) that developers run to authenticate their IDEs with the ContextMesh backend securely.
+3. **CLI & MCP Server**: A Node.js CLI tool (`contextmesh-cli`) that developers run to authenticate their IDEs with the ContextMesh backend securely.
 
 ---
 
@@ -43,12 +43,12 @@ You must have PostgreSQL installed and running locally.
 Instead of manual setup, developers can instantly connect their Cursor, Claude Code, or Antigravity environments using our NPM package.
 1. Tell the developer to open their terminal and run:
    ```bash
-   npx -y contextmesh-connect@latest
+   npx -y contextmesh-cli@latest
    ```
 2. The interactive prompt will ask for their **Team Passcode** and **Name**.
 3. It will automatically detect their installed IDEs and inject the ContextMesh connection securely.
 
-*(Note: They can run `npx contextmesh status` anytime to check their connection).*
+*(Note: They can run `npx contextmesh-cli status` anytime to check their connection).*
 
 ---
 

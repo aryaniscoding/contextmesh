@@ -14,7 +14,7 @@ import logoutCommand from "../src/commands/logout.js";
 const program = new Command();
 
 program
-  .name("contextmesh-connect")
+  .name("contextmesh-cli")
   .description("CLI to manage the ContextMesh MCP plugin")
   .version("1.0.3");
 

@@ -4,7 +4,7 @@
   "description": "ContextMesh CLI and MCP server for team memory",
   "type": "module",
   "bin": {
-    "contextmesh-connect": "./bin/cli.js"
+    "contextmesh-cli": "./bin/cli.js"
   },
   "files": [
     "bin/**/*.js",

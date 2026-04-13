@@ -64,7 +64,7 @@ export default async function setupCommand() {
     }
 
     console.log(chalk.bold.magenta("\n🚀 All set! Your AI tools will now automatically use ContextMesh."));
-    console.log(chalk.gray("You can check your status anytime by running: npx contextmesh-connect status\n"));
+    console.log(chalk.gray("You can check your status anytime by running: npx contextmesh-cli status\n"));
 
   } catch (err) {
     console.log(chalk.red(`\n✖ Authentication failed: ${err.message}\n`));
