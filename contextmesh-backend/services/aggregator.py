@@ -11,6 +11,7 @@ from typing import Optional
 
 from sqlalchemy.orm import Session
 from db.models import ContextSession, MasterContext
+from services.locks import try_advisory_lock
 
 logger = logging.getLogger(__name__)
 
@@ -51,14 +52,34 @@ def build_user_prompt(sessions_by_member: dict) -> str:
 async def synthesize_master_context(team_id: str, db: Session) -> Optional[dict]:
     """
     Run the LLM synthesis pipeline for a team.
-    Fetches all non-private sessions from the past 7 days,
-    groups by member, sends to Gemini, and saves result.
+
+    Held behind a per-team advisory lock because two callers can arrive at once:
+    the 30-minute scheduler on any backend instance, and the thread save_context
+    spawns after every save. Without the lock both read the same latest version
+    and write the same next one, so the team ends up with duplicate versions
+    from duplicate Gemini calls.
     """
     api_key = os.getenv("GEMINI_API_KEY", "")
     if not api_key or api_key.startswith("your-gemini"):
         logger.warning("No valid Gemini API key configured, skipping synthesis")
         return None
 
+    with try_advisory_lock(f"synthesize_master_context:{team_id}") as acquired:
+        if not acquired:
+            logger.info(
+                f"Synthesis for team {team_id} already in progress elsewhere, skipping"
+            )
+            return None
+        return await _run_synthesis(team_id, db, api_key)
+
+
+async def _run_synthesis(team_id: str, db: Session, api_key: str) -> Optional[dict]:
+    """
+    Fetch the past 7 days of non-private sessions, group them by member, send
+    them to Gemini, and persist the result as a new master context version.
+
+    Assumes the caller holds the team's synthesis lock.
+    """
     # Fetch recent non-private sessions
     cutoff = datetime.utcnow() - timedelta(days=7)
     sessions = (

@@ -3,8 +3,9 @@ ContextMesh Backend — FastAPI Entry Point.
 Run with: uvicorn main:app --reload --port 8000
 """
 import logging
+import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -15,6 +16,10 @@ from scheduler import start_scheduler, stop_scheduler
 load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Off unless explicitly enabled, because debug mode returns full tracebacks
+# to the caller on any unhandled exception.
+DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
 
 
 @asynccontextmanager
@@ -39,7 +44,7 @@ app = FastAPI(
     description="Shared AI Memory Layer for Engineering Teams",
     version="2.0.0",
     lifespan=lifespan,
-    debug=True,
+    debug=DEBUG,
 )
 
 # CORS — allow frontend to connect
@@ -68,10 +73,6 @@ def root():
         "database": "supabase",
     }
 
-
-@app.get("/test-headers")
-async def test_headers(request: Request):
-    return {"headers": dict(request.headers)}
 
 @app.get("/health")
 def health():

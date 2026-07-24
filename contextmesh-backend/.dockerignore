@@ -1,0 +1,23 @@
+# Local virtualenv — 228MB, and its binaries are built for the host OS
+venv/
+.venv/
+
+# Secrets are injected at runtime, never baked into an image layer
+.env
+.env.*
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Local debug artifacts
+*.log
+error.txt
+
+# Git and Docker metadata
+.git/
+.gitignore
+.dockerignore
+Dockerfile
