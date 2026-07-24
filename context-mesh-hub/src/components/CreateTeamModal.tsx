@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { motion, AnimatePresence } from "framer-motion";
 import { CheckCircle2, Copy, ArrowRight, Users, User, Check } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { createTeam } from "@/lib/api";
 
 interface CreateTeamModalProps {
@@ -14,6 +15,7 @@ interface CreateTeamModalProps {
 }
 
 const CreateTeamModal = ({ open, onOpenChange }: CreateTeamModalProps) => {
+  const { session } = useAuth();
   const [step, setStep] = useState(1);
   const [teamName, setTeamName] = useState("");
   const [adminName, setAdminName] = useState("");
@@ -59,7 +61,9 @@ const CreateTeamModal = ({ open, onOpenChange }: CreateTeamModalProps) => {
     setLoading(true);
 
     try {
-      const data = await createTeam(teamName.trim(), adminName.trim());
+      const token = session?.access_token;
+      if (!token) throw new Error("Not authenticated");
+      const data = await createTeam(token, teamName.trim());
       
       setTeamId(data.team_id);
       setPasscode(data.passcode);
@@ -69,11 +73,14 @@ const CreateTeamModal = ({ open, onOpenChange }: CreateTeamModalProps) => {
         teamId: data.team_id,
         teamName: teamName.trim(),
         passcode: data.passcode,
+        role: "admin",
         adminName: adminName.trim(),
         members: [adminName.trim()],
         createdAt: new Date().toISOString(),
       };
       localStorage.setItem("contextmesh_team", JSON.stringify(teamData));
+      // Persist passcode separately so it survives team re-selection
+      localStorage.setItem(`contextmesh_passcode_${data.team_id}`, data.passcode);
       localStorage.setItem(
         "contextmesh_currentUser",
         JSON.stringify({

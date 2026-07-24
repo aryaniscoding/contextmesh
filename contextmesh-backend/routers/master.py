@@ -4,9 +4,11 @@ import json
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from typing import Union
 from db.database import get_db
-from db.models import MasterContext
+from db.models import MasterContext, TeamMembership, User
 from db.schemas import MasterContextResponse
+from middleware.auth import get_caller, CLICaller
 
 router = APIRouter(tags=["Master Context"])
 
@@ -16,22 +18,31 @@ try:
     import redis
     REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379")
     _redis_client = redis.from_url(REDIS_URL, decode_responses=True)
-    _redis_client.ping()  # Test connection
+    _redis_client.ping()
 except Exception:
-    _redis_client = None  # Redis not available, fallback to DB only
+    _redis_client = None
 
 
 @router.get("/master-context", response_model=MasterContextResponse)
 def get_master_context(
     team_id: str = Query(..., description="Team ID"),
+    caller: Union[User, CLICaller] = Depends(get_caller),
     db: Session = Depends(get_db),
 ):
-    """
-    Get the latest synthesized Master Context for a team.
-    Checks Redis cache first, falls back to database.
-    Called by MCP server at start of every AI session,
-    and by the frontend right panel.
-    """
+    """Get the latest synthesized Master Context for a team."""
+    # Verify membership
+    if isinstance(caller, CLICaller):
+        if caller.team_id != team_id:
+            raise HTTPException(status_code=403, detail="CLI token not valid for this team")
+    else:
+        membership = (
+            db.query(TeamMembership)
+            .filter(TeamMembership.team_id == team_id, TeamMembership.user_id == caller.id)
+            .first()
+        )
+        if not membership:
+            raise HTTPException(status_code=403, detail="You are not a member of this team")
+
     # Try Redis cache first
     if _redis_client:
         try:
@@ -40,7 +51,7 @@ def get_master_context(
                 data = json.loads(cached)
                 return MasterContextResponse(**data)
         except Exception:
-            pass  # Redis error, fallback to DB
+            pass
 
     # Read from database
     mc = (
@@ -51,14 +62,10 @@ def get_master_context(
     )
 
     if not mc:
-        # No master context yet — return empty structure
         return MasterContextResponse(
-            version=0,
-            updated_at=None,
-            decisions=[],
-            in_progress=[],
-            open_questions=[],
-            conflicts=[],
+            version=0, updated_at=None,
+            decisions=[], in_progress=[],
+            open_questions=[], conflicts=[],
         )
 
     content = mc.content or {}
@@ -76,7 +83,7 @@ def get_master_context(
         try:
             _redis_client.setex(
                 f"master_context:{team_id}",
-                2100,  # 35 minutes
+                2100,
                 json.dumps(response_data, default=str),
             )
         except Exception:

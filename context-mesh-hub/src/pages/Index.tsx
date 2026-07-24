@@ -2,7 +2,6 @@ import { useState, useEffect, lazy, Suspense } from "react";
 import { ArrowUp } from "lucide-react";
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
-import SocialProofBar from "@/components/SocialProofBar";
 import ProblemSection from "@/components/ProblemSection";
 import HowItWorksSection from "@/components/HowItWorksSection";
 import FeaturesSection from "@/components/FeaturesSection";
@@ -65,7 +64,6 @@ const Index = () => (
     <main className="relative z-10">
       <HeroSection />
       <div className="grid-background-wrapper">
-        <SocialProofBar />
         <AnimatedDivider />
         <Suspense fallback={<DemoFallback />}>
           <DemoSection />

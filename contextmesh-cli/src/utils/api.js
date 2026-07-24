@@ -4,11 +4,11 @@ export const DEFAULT_BACKEND_URL = "http://localhost:8000";
 
 export async function joinTeam(passcode, memberName, backendUrl = DEFAULT_BACKEND_URL) {
   try {
-    const res = await axios.post(`${backendUrl}/auth/join-team`, {
+    const res = await axios.post(`${backendUrl}/auth/cli-join`, {
       passcode,
       member_name: memberName,
     });
-    return res.data; // expects { team_id, member, token }
+    return res.data; // expects { team_id, team_name, member, role, token }
   } catch (err) {
     if (err.response && err.response.data) {
       throw new Error(err.response.data.detail || "Authentication failed");

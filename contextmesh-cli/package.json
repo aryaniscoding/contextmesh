@@ -1,10 +1,10 @@
 {
   "name": "contextmesh-cli",
-  "version": "1.0.1",
+  "version": "1.0.5",
   "description": "ContextMesh CLI and MCP server for team memory",
   "type": "module",
   "bin": {
-    "contextmesh-connect": "./bin/cli.js"
+    "contextmesh-cli": "./bin/cli.js"
   },
   "files": [
     "bin/**/*.js",

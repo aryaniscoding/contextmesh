@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { motion } from "framer-motion";
-import { ArrowRight, Github, ChevronDown, LogIn, Users } from "lucide-react";
+import { ArrowRight, Github, ChevronDown, LogIn, Users, LayoutDashboard } from "lucide-react";
 import { useState, useEffect, lazy, Suspense } from "react";
+import { useNavigate } from "react-router-dom";
 import { ContextFlowSVG, NetworkMeshSVG, DataPacketsSVG, RingOrbitsSVG } from "./svg/SectionSVGs";
+import { useAuth } from "@/contexts/AuthContext";
 import CreateTeamModal from "./CreateTeamModal";
 import EnterTeamModal from "./EnterTeamModal";
 
@@ -36,8 +38,20 @@ const spring = { type: "spring" as const, stiffness: 100, damping: 15 };
 
 const HeroSection = () => {
   const { displayed, done, started } = useTypewriter("REMEMBERS", 80, 1200);
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [enterTeamOpen, setEnterTeamOpen] = useState(false);
+
+  const handleCreateTeam = () => {
+    if (!user) { navigate("/login"); return; }
+    setCreateTeamOpen(true);
+  };
+
+  const handleEnterTeam = () => {
+    if (!user) { navigate("/login"); return; }
+    setEnterTeamOpen(true);
+  };
 
   return (
     <section className="relative min-h-screen flex items-center pt-24 pb-16 overflow-hidden">
@@ -146,30 +160,56 @@ const HeroSection = () => {
             transition={{ duration: 0.5, delay: 1.5 }}
             className="mt-6 flex flex-col sm:flex-row gap-3"
           >
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setEnterTeamOpen(true)}
-              className="rounded-full px-6 h-10 text-sm border-[hsl(0_0%_100%/0.12)] text-foreground hover:bg-[hsl(0_0%_100%/0.06)] hover:border-accent/40 transition-all duration-300 gap-2"
-            >
-              <LogIn className="h-4 w-4" /> Enter Team
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => setCreateTeamOpen(true)}
-              className="gradient-btn border-0 text-primary-foreground rounded-full px-6 h-10 text-sm shimmer-btn relative overflow-hidden gap-2"
-            >
-              <Users className="h-4 w-4" /> Create Team
-            </Button>
+            {user ? (
+              // Logged-in: direct access to teams
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/teams")}
+                  className="gradient-btn border-0 text-primary-foreground rounded-full px-6 h-10 text-sm shimmer-btn relative overflow-hidden gap-2"
+                >
+                  <LayoutDashboard className="h-4 w-4" /> Go to My Teams
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleEnterTeam}
+                  className="rounded-full px-6 h-10 text-sm border-[hsl(0_0%_100%/0.12)] text-foreground hover:bg-[hsl(0_0%_100%/0.06)] hover:border-accent/40 transition-all duration-300 gap-2"
+                >
+                  <Users className="h-4 w-4" /> Join a Team
+                </Button>
+              </>
+            ) : (
+              // Logged-out: sign up / log in
+              <>
+                <Button
+                  size="sm"
+                  onClick={() => navigate("/signup")}
+                  className="gradient-btn border-0 text-primary-foreground rounded-full px-6 h-10 text-sm shimmer-btn relative overflow-hidden gap-2"
+                >
+                  Get Started <ArrowRight className="h-4 w-4" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate("/login")}
+                  className="rounded-full px-6 h-10 text-sm border-[hsl(0_0%_100%/0.12)] text-foreground hover:bg-[hsl(0_0%_100%/0.06)] hover:border-accent/40 transition-all duration-300 gap-2"
+                >
+                  <LogIn className="h-4 w-4" /> Log In
+                </Button>
+              </>
+            )}
           </motion.div>
-          <motion.p
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.5, delay: 1.7 }}
-            className="mt-3 text-xs text-muted-foreground/50"
-          >
-            Already have a passcode? <button onClick={() => setEnterTeamOpen(true)} className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">Enter your team →</button>
-          </motion.p>
+          {!user && (
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 1.7 }}
+              className="mt-3 text-xs text-muted-foreground/50"
+            >
+              Already have a passcode? <button onClick={() => navigate("/login")} className="text-violet-400 hover:text-violet-300 underline underline-offset-2 transition-colors">Log in to join your team →</button>
+            </motion.p>
+          )}
           </div>
 
           {/* Right column — Split Brain Visual */}

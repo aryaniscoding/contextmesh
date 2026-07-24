@@ -2,8 +2,8 @@ import { motion } from "framer-motion";
 import SectionHeading from "./SectionHeading";
 
 const techItems = [
-  "Mem0", "ChromaDB", "LangChain", "Claude API", "FastAPI",
-  "Next.js", "PostgreSQL", "Docker", "Redis", "Pinecone",
+  "FastAPI", "PostgreSQL", "Supabase", "SQLAlchemy", "pgvector",
+  "Claude API", "Gemini API", "MCP Protocol", "React", "Node.js",
 ];
 
 const TechStackSection = () => (
