@@ -88,7 +88,8 @@ class UsageLog(Base):
     id = Column(Integer, primary_key=True, autoincrement=True)
     team_id = Column(String, ForeignKey("teams.id", ondelete="CASCADE"), nullable=False)
     user_id = Column(UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"), nullable=True)
-    action = Column(String, nullable=False)                    # "embedding" | "synthesis" | "search"
+    member_name = Column(String, nullable=True)                # set for CLI users (no user_id)
+    action = Column(String, nullable=False)                    # "embedding" | "synthesis" | "search" | "ai_usage"
     model_name = Column(String, nullable=False)
     input_tokens = Column(Integer, default=0)
     output_tokens = Column(Integer, default=0)

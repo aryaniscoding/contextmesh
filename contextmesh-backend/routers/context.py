@@ -4,7 +4,7 @@ import threading
 import logging
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import text
+from sqlalchemy import text, or_
 from uuid import UUID
 
 from db.database import get_db, SessionLocal
@@ -21,7 +21,8 @@ from services.embeddings import (
     prepare_session_text, generate_embedding,
     generate_query_embedding, estimate_embedding_tokens,
 )
-from services.usage import log_usage
+from services.usage import log_usage, count_message_tokens
+from services.handoff import generate_handoff
 
 logger = logging.getLogger(__name__)
 
@@ -95,6 +96,18 @@ async def save_context(
     db.commit()
     db.refresh(session)
 
+    # Log AI usage from the saved conversation
+    if req.model_name:
+        input_t, output_t = count_message_tokens(req.messages)
+        log_usage(
+            db, req.team_id, user_id,
+            action="ai_usage",
+            model_name=req.model_name,
+            input_tokens=input_t,
+            output_tokens=output_t,
+            member_name=display_name if is_cli else None,
+        )
+
     # Generate embedding asynchronously
     if not req.is_private:
         embed_text = prepare_session_text(req.messages, req.files_modified, display_name)
@@ -139,11 +152,16 @@ def get_member_context(
     )
 
     if member_user_id:
-        query = query.filter(ContextSession.user_id == UUID(member_user_id))
-        display_name = member_user_id
+        # Look up user's display_name so we can also match CLI sessions saved under their name
         target_user = db.query(User).filter(User.id == UUID(member_user_id)).first()
-        if target_user:
-            display_name = target_user.display_name
+        display_name = target_user.display_name if target_user else member_user_id
+        # Match sessions by user_id (web) OR by member_name (CLI saved under same name)
+        query = query.filter(
+            or_(
+                ContextSession.user_id == UUID(member_user_id),
+                ContextSession.member_name == display_name,
+            )
+        )
     elif member:
         query = query.filter(ContextSession.member_name == member)
         display_name = member
@@ -305,3 +323,35 @@ async def search_context(
         results=results,
         total=len(results),
     )
+
+
+@router.get("/handoff")
+async def get_handoff_snapshot(
+    team_id: str = Query(...),
+    member_user_id: str = Query(None, description="Supabase user ID of the member"),
+    member_name: str = Query(None, description="CLI member name"),
+    caller: Union[User, CLICaller] = Depends(get_caller),
+    db: Session = Depends(get_db),
+):
+    """
+    Generate a handoff snapshot for a leaving team member.
+    Admin-only. Returns a structured AI-ready document.
+    """
+    # Only admins can generate handoffs
+    if isinstance(caller, CLICaller):
+        raise HTTPException(status_code=403, detail="Admins only")
+    membership = db.query(TeamMembership).filter(
+        TeamMembership.team_id == team_id,
+        TeamMembership.user_id == caller.id,
+    ).first()
+    if not membership or membership.role != "admin":
+        raise HTTPException(status_code=403, detail="Only team admins can generate handoff snapshots")
+
+    if not member_user_id and not member_name:
+        raise HTTPException(status_code=400, detail="Provide member_user_id or member_name")
+
+    try:
+        snapshot = await generate_handoff(db, team_id, member_user_id, member_name)
+        return snapshot
+    except ValueError as e:
+        raise HTTPException(status_code=422, detail=str(e))

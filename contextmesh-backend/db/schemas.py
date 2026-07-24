@@ -75,6 +75,7 @@ class SaveContextRequest(BaseModel):
     messages: List[dict]
     files_modified: List[str] = []
     is_private: bool = False
+    model_name: Optional[str] = None  # e.g. "claude-sonnet-4-5", "gpt-4o"
 
 
 class SaveContextResponse(BaseModel):

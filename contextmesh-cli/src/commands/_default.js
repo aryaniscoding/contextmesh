@@ -49,7 +49,9 @@ export default async function setupCommand() {
       teamId: data.team_id,
       memberId: answers.memberName,
       token: data.token,
-      backendUrl: "http://localhost:8000" // Hardcoded for MVP, can be prompted
+      backendUrl: "http://localhost:8000",
+      sessionStartIndex: 0,        // reset checkpoint on every new team join
+      sessionStartedAt: new Date().toISOString(),
     });
 
     console.log(chalk.green("✔ Success! Saved local configuration."));

@@ -29,3 +29,20 @@ export function clearConfig() {
     fs.unlinkSync(CONFIG_FILE);
   }
 }
+
+/**
+ * Mark the start of a new project session.
+ * Stores the message index so save_context only pushes messages from this point onward.
+ */
+export function markSessionStart(messageIndex) {
+  const config = getConfig();
+  if (!config) return;
+  config.sessionStartIndex = messageIndex;
+  config.sessionStartedAt = new Date().toISOString();
+  saveConfig(config);
+}
+
+export function getSessionStartIndex() {
+  const config = getConfig();
+  return config?.sessionStartIndex ?? 0;
+}

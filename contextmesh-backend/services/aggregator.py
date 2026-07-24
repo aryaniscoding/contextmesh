@@ -88,12 +88,13 @@ async def synthesize_master_context(team_id: str, db: Session) -> Optional[dict]
 
     # Call Gemini API
     try:
-        import google.generativeai as genai
-        genai.configure(api_key=api_key)
-        model = genai.GenerativeModel("gemini-2.5-flash")
-        response = model.generate_content(
-            f"{SYSTEM_PROMPT}\n\n{user_prompt}",
-            generation_config=genai.types.GenerationConfig(
+        from google import genai
+        from google.genai import types as genai_types
+        client = genai.Client(api_key=api_key)
+        response = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=f"{SYSTEM_PROMPT}\n\n{user_prompt}",
+            config=genai_types.GenerateContentConfig(
                 response_mime_type="application/json",
                 max_output_tokens=2000,
             ),

@@ -7,12 +7,13 @@ import { getMasterContextTool } from "./tools/getMasterContext.js";
 import { saveContextTool } from "./tools/saveContext.js";
 import { loadPeerContextTool } from "./tools/loadPeerContext.js";
 import { markPrivateTool } from "./tools/markPrivate.js";
+import { startSessionTool } from "./tools/startSession.js";
 
 // ─── Server Setup ───
 const server = new Server(
   {
     name: "contextmesh",
-    version: "1.0.0",
+    version: "1.0.3",
   },
   {
     capabilities: { tools: {} },
@@ -20,8 +21,9 @@ const server = new Server(
 );
 
 const tools = [
-  getMasterContextTool,
+  startSessionTool,
   saveContextTool,
+  getMasterContextTool,
   loadPeerContextTool,
   markPrivateTool,
 ];

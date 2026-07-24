@@ -47,9 +47,8 @@ def get_my_teams(
     teams = []
     for membership, team in memberships:
         member_count = (
-            db.query(TeamMembership)
-            .filter(TeamMembership.team_id == team.id)
-            .count()
+            db.query(TeamMembership).filter(TeamMembership.team_id == team.id).count()
+            + db.query(CLIToken).filter(CLIToken.team_id == team.id).count()
         )
         teams.append(TeamInfo(
             team_id=team.id,

@@ -1,0 +1,837 @@
+{
+    "nodes": [
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "7f84194f-a4e6-4d8b-bd5b-513a2d6893f1",
+                            "name": "status",
+                            "value": "={{ $json.error }}",
+                            "type": "string"
+                        },
+                        {
+                            "id": "f4c56a8d-ef22-4053-ad16-00482b794540",
+                            "name": "errorMessage",
+                            "value": "={{ $json.error }}",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                1792,
+                4320
+            ],
+            "id": "14d24c76-4ff0-48a9-85c5-3c428b06ceaf",
+            "name": "Edit Fields"
+        },
+        {
+            "parameters": {
+                "assignments": {
+                    "assignments": [
+                        {
+                            "id": "25b12cc6-6392-41c0-9ccb-45fcea832fc3",
+                            "name": "status",
+                            "value": "\"success\"",
+                            "type": "string"
+                        }
+                    ]
+                },
+                "options": {}
+            },
+            "type": "n8n-nodes-base.set",
+            "typeVersion": 3.4,
+            "position": [
+                2144,
+                3872
+            ],
+            "id": "c6dfa945-f220-45c3-9588-6f1a51c16157",
+            "name": "Edit Fields4"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://imochautility-production.up.railway.app/api/webhook/n8n/execution-status",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "content-type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"execution_id\": \"{{ $('Webhook').first().json.body.execution_id }}\",\n  \"user_id\": \"{{ $('Webhook').first().json.body.user_id }}\",\n  \"status\": \"error\",\n  \"error\": {\n    \"message\": \"{{ $json.errorMessage || 'Workflow execution failed' }}\"\n  }\n}\n",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                2016,
+                4320
+            ],
+            "id": "0af2ec09-7dd9-4f04-8898-315825c09b55",
+            "name": "HTTP Request1"
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://imochautility-production.up.railway.app/api/webhook/n8n/execution-status",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "content-type",
+                            "value": "application/json"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={\n  \"execution_id\": \"{{ $('Webhook').first().json.body.execution_id }}\",\n  \"user_id\": \"{{ $('Webhook').first().json.body.user_id }}\",\n  \"status\": \"success\",\n  \"data\": {\n    \"message\": \"Topicwise Creation (Scenario Based) completed successfully\",\n    \"skillName\": \"{{ $('Webhook').first().json.body.skillName }}\",\n    \"questionType\": \"{{ $('Webhook').first().json.body.questionType }}\",\n    \"result\": \"{{ $json.result }}\"\n  }\n}\n",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 4.2,
+            "position": [
+                2368,
+                3872
+            ],
+            "id": "3edb31ba-46c4-4fae-80b2-7c1bd719b2eb",
+            "name": "HTTP success"
+        },
+        {
+            "parameters": {
+                "sendTo": "={{ $json.email }}",
+                "subject": "Generated MCQs",
+                "emailType": "text",
+                "message": "Dear User,  Attached are the multiple-choice questions (MCQs) generated based on your recent request . The questions are provided in a structured format as requested, including difficulty levels, question text, options, correct answers, and explanations.  Thank you,  AgentMocha",
+                "options": {
+                    "attachmentsUi": {
+                        "attachmentsBinary": [
+                            {}
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.gmail",
+            "typeVersion": 2.1,
+            "position": [
+                1872,
+                3888
+            ],
+            "id": "27d6d299-9264-4c7b-b782-35cae2b4eb94",
+            "name": "Send a message",
+            "webhookId": "74024ba4-add1-4ad1-932b-0983a4614402",
+            "credentials": {
+                "gmailOAuth2": {
+                    "id": "pn1sOg9TC0KQguBE",
+                    "name": "Gmail account"
+                }
+            },
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "model": "google/gemini-3-pro-preview",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+            "typeVersion": 1,
+            "position": [
+                -1360,
+                4224
+            ],
+            "id": "3d4673d5-04f8-460b-b875-805d49cb4bd6",
+            "name": "OpenRouter Chat Model1",
+            "credentials": {
+                "openRouterApi": {
+                    "id": "QnMaUiFhCkOuwbKR",
+                    "name": "company"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "====== ROLE & OBJECTIVE\nYou are an Expert Coding Assessment Strategist. Your objective is to design distinct, non-overlapping assessment blueprints (called \"Angles\") for coding multiple-choice questions (MCQs) for a specific Skill and Topic.\n\nThese angles will be used by downstream writers to generate coding MCQs where the question is PLAIN TEXT describing a goal, and the options contain the CODE SNIPPETS. Therefore, the angles must define *distinct* coding scenarios and *distinct* mental tasks.\n\n===== INPUT DATA\n- Skill: {{ $json.skillName }}\n- Topic: {{ $json.topic }}\n- Context: {{ $json.context }}\n- Required Counts: Easy: {{ $json.easy }}, Medium: {{ $json.medium }}, Hard: {{ $json.hard }}\n\n===== DIVERSITY RULES (ABSOLUTE)\nYou must generate the required number of angles per difficulty.\nEvery generated angle must differ in three dimensions:\n1. THE PROBLEM CONTEXT: The programming scenario must change (e.g., implementing a loop, fixing a described bug, optimizing a described process).\n2. THE MENTAL TASK: The cognitive action required must change (e.g., \"Select the correct code to output X\", \"Choose the most optimized function\", \"Identify the code that causes a described error\").\n3. THE SUB-CONCEPT: Do not test the exact same syntax or logic facet twice.\n\n===== DIFFICULTY FRAMEWORK\nGenerate angles based on these abstract definitions:\n\n1. EASY (Recall & Basic Syntax)\n   - Focus: Knowing the exact syntax to achieve a specific simple goal.\n   - The Angle should ask the candidate to: Identify the correct basic code snippet that performs a described simple action.\n\n2. MEDIUM (Application & Logic Tracing)\n   - Focus: Selecting the correct logic/loop/function implementation to solve a described problem.\n   - The Angle should ask the candidate to: Choose the correct code block that correctly handles a specific described logic constraint or state.\n\n3. HARD (Evaluation & Complex Systems)\n   - Focus: Choosing the most optimal, bug-free, or edge-case-handling code implementation for a complex requirement.\n   - The Angle should ask the candidate to: Evaluate 4 complex code snippets and select the one that optimally solves the described advanced problem without side effects.\n\n===== OUTPUT INSTRUCTIONS\n- Do NOT provide the actual code in the output. Provide *instructions* on what the plain text problem should be and what the code snippet options should test.\n- Output strictly valid JSON.\n\n===== JSON OUTPUT SCHEMA\n{\n  \"easy\": [\n    {\n      \"topic\": \"{{ $json.topic }}\",\n      \"context\": \"{{ $json.context }}\",\n      \"angle_label\": \"[Abstract name of the coding concept being tested]\",\n      \"angle_instruction\": \"[Detailed instruction defining the specific plain-text scenario and the code-selection mental task]\",\n      \"semantic_focus\": \"[The specific programming principle to be evaluated]\"\n    }\n  ],\n  \"medium\": [\n    {\n      \"topic\": \"{{ $json.topic }}\",\n      \"context\": \"{{ $json.context }}\",\n      \"angle_label\": \"[Abstract name of the coding concept being tested]\",\n      \"angle_instruction\": \"[Detailed instruction defining the specific plain-text scenario and the code-selection mental task]\",\n      \"semantic_focus\": \"[The specific programming principle to be evaluated]\"\n    }\n  ],\n  \"hard\": [\n    {\n      \"topic\": \"{{ $json.topic }}\",\n      \"context\": \"{{ $json.context }}\",\n      \"angle_label\": \"[Abstract name of the coding concept being tested]\",\n      \"angle_instruction\": \"[Detailed instruction defining the specific plain-text scenario and the code-selection mental task]\",\n      \"semantic_focus\": \"[The specific programming principle to be evaluated]\"\n    }\n  ]\n}\n",
+                "options": {
+                    "systemMessage": "You are an expert coding assessment angle designer.\n\nYou generate angles for coding assessment questions.\n\nIMPORTANT:\nEach angle you generate corresponds to ONE UNIQUE QUESTION SLOT.\n\nIf a topic has:\n- 2 easy questions → generate 2 DIFFERENT easy coding angles\n- 1 medium question → generate 1 medium coding angle\n- 2 hard questions → generate 2 DIFFERENT hard coding angles\n\nAngles within the SAME difficulty MUST NOT overlap in:\n- angle_label\n- angle_instruction intent\n- semantic_focus\n\nYou must reason internally to ensure diversity, but output ONLY JSON.\n"
+                }
+            },
+            "type": "@n8n/n8n-nodes-langchain.agent",
+            "typeVersion": 1.7,
+            "position": [
+                -1360,
+                4016
+            ],
+            "id": "9ae31bd9-0304-4cee-9b83-e69a2676d954",
+            "name": "AI Agent easy ",
+            "retryOnFail": true,
+            "alwaysOutputData": true,
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Combined Normalize + Code5\n// Responsibility:\n// 1. Read GLOBAL fields from Webhook ONCE\n// 2. Normalize extracted rows\n// 3. Aggregate per-topic counts (easy / medium / hard)\n// 4. Output ONE item per topic\n\nconst items = $input.all();\n\n/* --------------------------------------------------\n   STEP 1: Read GLOBAL values from Webhook\n-------------------------------------------------- */\nlet webhookBody = {};\ntry {\n  webhookBody = $('Webhook').first().json.body || {};\n} catch (e) {}\n\nconst GLOBAL_SKILL =\n  webhookBody.skillName ||\n  webhookBody.SkillName ||\n  '';\n\nconst GLOBAL_EMAIL =\n  webhookBody.email ||\n  webhookBody.Email ||\n  '';\n\nconst GLOBAL_QTYPE =\n  webhookBody.questionType ||\n  webhookBody.QuestionType ||\n  '';\n\nif (!GLOBAL_SKILL) {\n  throw new Error(\"Combined Node: skill missing from webhook\");\n}\n\n/* --------------------------------------------------\n   Helper: find key ignoring case & spaces\n-------------------------------------------------- */\nfunction getKey(obj, target) {\n  return Object.keys(obj).find(\n    k => k.trim().toLowerCase() === target.toLowerCase()\n  );\n}\n\n/* --------------------------------------------------\n   STEP 2 + 3: Normalize + Aggregate per topic\n-------------------------------------------------- */\nconst out = [];\n\nfor (const item of items) {\n  const row = item.json || {};\n\n  const topicKey = getKey(row, 'sub-topics') || getKey(row, 'subtopic') || getKey(row, 'topic');\n  const topic = topicKey ? row[topicKey] : '';\n\n  if (!topic) continue;\n\n  const context =\n    row.context ||\n    row.Context ||\n    '';\n\n  const easy   = Number(row[getKey(row, 'easy')])   || 0;\n  const medium = Number(row[getKey(row, 'medium')]) || 0;\n  const hard   = Number(row[getKey(row, 'hard')])   || 0;\n\n  out.push({\n    json: {\n      skillName: GLOBAL_SKILL,\n      topic,\n      context,\n      email: GLOBAL_EMAIL,\n      easy,\n      medium,\n      hard\n    }\n  });\n}\n\nreturn out;\n"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -1584,
+                4032
+            ],
+            "id": "2361554e-d66c-45d7-967c-115c1868cbd8",
+            "name": "Code in JavaScript",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "numberInputs": 3
+            },
+            "type": "n8n-nodes-base.merge",
+            "typeVersion": 3,
+            "position": [
+                864,
+                3984
+            ],
+            "id": "09e4001c-3b68-4e27-af6c-6effb1a568f9",
+            "name": "Merge1",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "operation": "xlsx",
+                "options": {
+                    "fileName": "={{ $json.Topic }}_questions.xlsx"
+                }
+            },
+            "type": "n8n-nodes-base.convertToFile",
+            "typeVersion": 1.1,
+            "position": [
+                1328,
+                3920
+            ],
+            "id": "73b377e3-0d71-442e-a93c-3217a171e665",
+            "name": "Convert to File1",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "/********************\n * CONFIG / CONSTANTS\n ********************/\nconst FIELD_ORDER_PIPE = [\n  \"Question Type\",\n  \"Difficulty Level\",\n  \"Question Text\",\n  \"Option (A)\",\n  \"Option (B)\",\n  \"Option (C)\",\n  \"Option (D)\",\n  \"Option (E)\",\n  \"Correct Option (A/B/C/D)\",\n  \"Answer Explanation\",\n  \"Score\",\n  \"Sub-Topics\",\n  \"Author\",\n  \"Topic\",\n];\n\nconst RE_FIELD_LINE = /^([^:]+)\\s*:\\s*(.*)$/;\n\nfunction getTopicWithFallback() {\n  let topicValue = null;\n  const tryNode = (name) => {\n    try {\n      const data = $(name).first().json;\n      if (data && data.Topic !== undefined) return data.Topic;\n    } catch (_) {}\n    return null;\n  };\n  topicValue = tryNode('Code3') || tryNode('Code1') || tryNode('Code4') || tryNode('Code5');\n  return topicValue || \"\";\n}\n\nfunction normalizeKeyToKnown(fieldNameRaw, knownKeys) {\n  const norm = fieldNameRaw.replace(/\\s+/g, ' ').replace(/:+$/, '').trim().toLowerCase();\n  for (const k of knownKeys) {\n    if (k.toLowerCase() === norm) return k;\n  }\n  const optMatch = norm.match(/^option\\s*\\(([a-e])\\)$/i);\n  if (optMatch) {\n    return `Option (${optMatch[1].toUpperCase()})`;\n  }\n  if (norm.startsWith('correct option')) return \"Correct Option (A/B/C/D)\";\n  if (norm === 'difficulty level') return \"Difficulty Level\";\n  if (norm === 'sub-topics' || norm === 'sub-topics ') return \"Sub-Topics\";\n  return knownKeys.find(k => k.toLowerCase() === norm) || null;\n}\n\nfunction parsePipeRow(row) {\n  if (typeof row !== 'string') return null;\n  if (!row.includes('|')) return null;\n  const questionTemplate = { \"Question Type\": \"\", \"Difficulty Level\": \"\", \"Question Text\": \"\", \"Option (A)\": \"\", \"Option (B)\": \"\", \"Option (C)\": \"\", \"Option (D)\": \"\", \"Option (E)\": \"\", \"Correct Option (A/B/C/D)\": \"\", \"Answer Explanation\": \"\", \"Score\": \"\", \"Sub-Topics\": \"\", \"Author\": \"\", \"Topic\": \"\" };\n  const knownKeys = Object.keys(questionTemplate);\n  const segments = row.split('|').map(s => s.trim()).filter(Boolean);\n  let labeledDetected = false;\n  const qLabeled = { ...questionTemplate };\n  for (const seg of segments) {\n    const m = seg.match(RE_FIELD_LINE);\n    if (!m) continue;\n    labeledDetected = true;\n    let fieldNameRaw = m[1].trim();\n    let value = m[2].trim();\n    const mappedKey = normalizeKeyToKnown(fieldNameRaw, knownKeys);\n    if (!mappedKey) continue;\n    if (/^Correct Option/i.test(mappedKey)) {\n      const corr = value.match(/[A-D]/i);\n      if (corr) qLabeled[\"Correct Option (A/B/C/D)\"] = corr[0].toUpperCase();\n      continue;\n    }\n    qLabeled[mappedKey] = value;\n  }\n  if (labeledDetected && qLabeled[\"Question Type\"] && qLabeled[\"Question Text\"]) {\n    return qLabeled;\n  }\n  let parts = row.split('|').map(p => p.trim());\n  if (parts.length < FIELD_ORDER_PIPE.length) return null;\n  if (parts.length > FIELD_ORDER_PIPE.length) {\n    const fixed = parts.slice(0, FIELD_ORDER_PIPE.length - 1);\n    fixed.push(parts.slice(FIELD_ORDER_PIPE.length - 1).join(' | '));\n    parts = fixed;\n  }\n  const q = { ...questionTemplate };\n  FIELD_ORDER_PIPE.forEach((key, idx) => { q[key] = (parts[idx] || \"\").trim(); });\n  return q[\"Question Type\"] && q[\"Question Text\"] ? q : null;\n}\n\nfunction parseKeyValueBlock(block) {\n  const linesRaw = block.split('\\n');\n  const question = { \"Question Type\": \"\", \"Difficulty Level\": \"\", \"Question Text\": \"\", \"Option (A)\": \"\", \"Option (B)\": \"\", \"Option (C)\": \"\", \"Option (D)\": \"\", \"Option (E)\": \"\", \"Correct Option (A/B/C/D)\": \"\", \"Answer Explanation\": \"\", \"Score\": \"\", \"Sub-Topics\": \"\", \"Author\": \"\", \"Topic\": \"\" };\n  \n  if (linesRaw.length === 1 && linesRaw[0].includes('|')) {\n    const tryPipe = parsePipeRow(linesRaw[0]);\n    if (tryPipe) return tryPipe;\n  }\n\n  let currentField = null;\n\n  for (let i = 0; i < linesRaw.length; i++) {\n    let lineRaw = linesRaw[i];\n    let line = lineRaw.trim();\n    if (!line && !currentField) continue;\n\n    let match = line.match(RE_FIELD_LINE);\n    let potentialField = match ? normalizeKeyToKnown(match[1], Object.keys(question)) : null;\n\n    if (potentialField && (line.startsWith(\"Option\") || line.startsWith(\"Correct Option\") || line.startsWith(\"Answer Explanation\") || line.startsWith(\"Question Type\") || line.startsWith(\"Difficulty Level\") || line.startsWith(\"Question Text\") || line.startsWith(\"Score\") || line.startsWith(\"Sub-Topics\") || line.startsWith(\"Author\") || line.startsWith(\"Topic\"))) {\n      currentField = potentialField;\n      let value = match[2];\n      if (currentField.startsWith('Option')) {\n          value = value.replace(/^```[a-z]*\\s*/i, '').replace(/```\\s*$/i, '');\n      }\n      question[currentField] = value;\n    } else if (currentField) {\n      if (currentField.startsWith('Option')) {\n          let cleanLine = lineRaw.replace(/```[a-z]*/gi, '').replace(/```/g, '');\n          if (cleanLine.trim() !== '') {\n              question[currentField] += (question[currentField] ? \"\\n\" : \"\") + cleanLine;\n          } else if (question[currentField]) {\n              question[currentField] += \"\\n\";\n          }\n      } else {\n          question[currentField] += (question[currentField] ? \" \" : \"\") + line;\n      }\n    }\n  }\n\n  Object.keys(question).forEach(k => {\n    if (k.startsWith('Option')) {\n        question[k] = question[k].replace(/```[a-z]*\\n?/gi, '').replace(/```/g, '').trim();\n    } else {\n        question[k] = (question[k] || \"\").trim();\n    }\n  });\n  \n  if (question[\"Question Text\"] && question[\"Question Type\"]) return question;\n  return null;\n}\n\nfunction parseMCQQuestions(input) {\n  if (typeof input !== 'string') {\n    try { input = JSON.stringify(input); } catch { input = String(input); }\n  }\n  const lines = input.split('\\n').map(l => l.trim()).filter(Boolean);\n  const result = [];\n  for (const line of lines) {\n    const q = parsePipeRow(line);\n    if (q) result.push(q);\n  }\n  if (result.length > 0) return result;\n  const blocks = input.split(/(?=Question Type:)/i).filter(b => b.trim() !== \"\");\n  for (const blockRaw of blocks) {\n    const q = parseKeyValueBlock(blockRaw);\n    if (q) result.push(q);\n  }\n  if (result.length === 0) {\n    const q = parseKeyValueBlock(input);\n    if (q) result.push(q);\n  }\n  return result;\n}\n\nfunction applyTopicMapping(questions) {\n  const topicValue = getTopicWithFallback();\n  return questions.map(q => {\n    if (!q.Topic || q.Topic.trim() === \"\") q.Topic = topicValue;\n    return q;\n  });\n}\n\nfunction processInputItems(items) {\n  const results = [];\n  for (const item of items) {\n    try {\n      let inputData = item.json;\n      if (Array.isArray(inputData)) {\n        for (const elem of inputData) {\n          if (typeof elem === 'string') {\n            const parsed = parseMCQQuestions(elem);\n            results.push(...applyTopicMapping(parsed).map(q => ({ json: q })));\n          } else if (elem && typeof elem === 'object') {\n            if (typeof elem.output === 'string') {\n              const parsed = parseMCQQuestions(elem.output);\n              results.push(...applyTopicMapping(parsed).map(q => ({ json: q })));\n            } else {\n              for (const k of Object.keys(elem)) {\n                const v = elem[k];\n                if (typeof v === 'string' && (v.includes('Question Type') || v.includes('|'))) {\n                  const parsed = parseMCQQuestions(v);\n                  if (parsed.length) results.push(...applyTopicMapping(parsed).map(q => ({ json: q })));\n                }\n              }\n            }\n          }\n        }\n        continue;\n      }\n      if (typeof inputData === 'string') {\n        const parsed = parseMCQQuestions(inputData);\n        results.push(...applyTopicMapping(parsed).map(q => ({ json: q })));\n        continue;\n      }\n      if (inputData && typeof inputData === 'object') {\n        let found = false;\n        const probableKeys = Object.keys(inputData);\n        for (const key of probableKeys) {\n          const val = inputData[key];\n          if (typeof val === 'string' && (val.includes('Question Type') || val.includes('|'))) {\n            const parsed = parseMCQQuestions(val);\n            if (parsed.length) {\n              results.push(...applyTopicMapping(parsed).map(q => ({ json: q })));\n              found = true;\n            }\n          }\n        }\n        if (!found) {\n          const parsed = parseMCQQuestions(JSON.stringify(inputData));\n          results.push(...applyTopicMapping(parsed).map(q => ({ json: q })));\n        }\n      }\n    } catch (err) {\n      console.error(`Error processing item: ${err.message}`);\n    }\n  }\n  return results.length ? results : [{ json: { Error: \"No questions could be parsed from the input\" } }];\n}\n\nconst items = $input.all();\nreturn processInputItems(items);"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1088,
+                3952
+            ],
+            "id": "4a2f6144-1aca-4bc8-bae3-c03df8950c41",
+            "name": "Code",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "/**\n\nN8N Code Node for processing webhook data and binary files (Current Version)\nThis code uses the most current n8n syntax for accessing webhook data\nand processing binary files.\n*/\n// Code that runs for each item\nconst item = items[0]; // Get the first item\n\n// Extract skillName and email from webhook JSON body\n// Using the expression syntax as specified in your requirements\nconst skillName = $('Webhook').first().json.body.skillName;\nconst email = $('Webhook').first().json.body.email;\n\n// Process binary data\nlet binaryDataInfo = {\nexists: false,\nsize: 0,\ntype: null,\nfileName: null\n};\n\n// Check if binary data exists\nif (item.binary && Object.keys(item.binary).length > 0) {\n// Get the first binary property key (usually 'data' as mentioned in your requirements)\nconst binaryPropertyName = Object.keys(item.binary)[0];\nconst binaryData = item.binary[binaryPropertyName];\n\nbinaryDataInfo = {\nexists: true,\nsize: binaryData.size,\ntype: binaryData.mimeType,\nfileName: binaryData.fileName || 'unknown'\n};\n\n// Return the processed data with binary\nreturn {\njson: {\nskillName,\nemail,\nprocessedAt: new Date().toISOString(),\nbinaryInfo: binaryDataInfo,\nmessage: \"Successfully processed webhook data and binary file\"\n},\n// Pass through the binary data\nbinary: item.binary\n};\n}\n\n// If no binary data, return just the JSON\nreturn {\njson: {\nskillName,\nemail,\nprocessedAt: new Date().toISOString(),\nbinaryInfo: binaryDataInfo,\nmessage: \"Successfully processed webhook data, but no binary file was found\"\n}\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                1552,
+                3904
+            ],
+            "id": "26d88e0d-f30b-40d5-a8b9-331bf57621f9",
+            "name": "Code5",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Code7 – EASY: attach balanced A–D position and pass angle metadata\n\nconst positions = ['A', 'B', 'C', 'D'];\nconst maxSameInRow = 2;\n\n// collect easy blocks\nconst easyBlocks = $input.all()\n  .map(item => item.json.easy)\n  .filter(Boolean);\n\nif (easyBlocks.length === 0) {\n  console.warn('No easy blocks found');\n  return [];\n}\n\n// balanced position picker\nconst history = [];\nconst count = { A: 0, B: 0, C: 0, D: 0 };\n\nfunction pickPosition() {\n  let allowed = positions.slice();\n  if (history.length >= maxSameInRow) {\n    const recent = history.slice(-maxSameInRow);\n    if (recent.every(p => p === recent[0])) {\n      allowed = allowed.filter(p => p !== recent[0]);\n    }\n  }\n  const min = Math.min(...allowed.map(p => count[p]));\n  const pool = allowed.filter(p => count[p] === min);\n  const pos = pool[Math.floor(Math.random() * pool.length)];\n  history.push(pos);\n  count[pos]++;\n  return pos;\n}\n\n// build output\nreturn easyBlocks.map(block => ({\n  json: {\n    topic: block.topic,\n    context: block.context || '',\n    angle_label: block.angle_label,\n    angle_instruction: block.angle_instruction,\n    semantic_focus: block.semantic_focus || '',\n    correctPosition: pickPosition()\n  }\n}));\n"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -512,
+                3600
+            ],
+            "id": "520dec3b-7d39-47c2-83e0-c13344e304f5",
+            "name": "Code16",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Code8 – MEDIUM: attach balanced A–D position and pass angle metadata\n\nconst positions = ['A', 'B', 'C', 'D'];\nconst maxSameInRow = 2;\n\nconst mediumBlocks = $input.all()\n  .map(item => item.json.medium)\n  .filter(Boolean);\n\nif (mediumBlocks.length === 0) {\n  console.warn('No medium blocks found');\n  return [];\n}\n\nconst history = [];\nconst count = { A: 0, B: 0, C: 0, D: 0 };\n\nfunction pickPosition() {\n  let allowed = positions.slice();\n  if (history.length >= maxSameInRow) {\n    const recent = history.slice(-maxSameInRow);\n    if (recent.every(p => p === recent[0])) {\n      allowed = allowed.filter(p => p !== recent[0]);\n    }\n  }\n  const min = Math.min(...allowed.map(p => count[p]));\n  const pool = allowed.filter(p => count[p] === min);\n  const pos = pool[Math.floor(Math.random() * pool.length)];\n  history.push(pos);\n  count[pos]++;\n  return pos;\n}\n\nreturn mediumBlocks.map(block => ({\n  json: {\n    topic: block.topic,\n    context: block.context || '',\n    angle_label: block.angle_label,\n    angle_instruction: block.angle_instruction,\n    semantic_focus: block.semantic_focus || '',\n    correctPosition: pickPosition()\n  }\n}));\n"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -512,
+                4064
+            ],
+            "id": "f9187427-f7b1-4cbc-bc05-d7e0a97258fc",
+            "name": "Code17",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "jsCode": "// Code9 – HARD: attach balanced A–D position and pass angle metadata\n\nconst positions = ['A', 'B', 'C', 'D'];\nconst maxSameInRow = 2;\n\nconst hardBlocks = $input.all()\n  .map(item => item.json.hard)\n  .filter(Boolean);\n\nif (hardBlocks.length === 0) {\n  console.warn('No hard blocks found');\n  return [];\n}\n\nconst history = [];\nconst count = { A: 0, B: 0, C: 0, D: 0 };\n\nfunction pickPosition() {\n  let allowed = positions.slice();\n  if (history.length >= maxSameInRow) {\n    const recent = history.slice(-maxSameInRow);\n    if (recent.every(p => p === recent[0])) {\n      allowed = allowed.filter(p => p !== recent[0]);\n    }\n  }\n  const min = Math.min(...allowed.map(p => count[p]));\n  const pool = allowed.filter(p => count[p] === min);\n  const pos = pool[Math.floor(Math.random() * pool.length)];\n  history.push(pos);\n  count[pos]++;\n  return pos;\n}\n\nreturn hardBlocks.map(block => ({\n  json: {\n    topic: block.topic,\n    context: block.context || '',\n    angle_label: block.angle_label,\n    angle_instruction: block.angle_instruction,\n    semantic_focus: block.semantic_focus || '',\n    correctPosition: pickPosition()\n  }\n}));\n"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -496,
+                4640
+            ],
+            "id": "2dc6f116-1093-4f2c-8f68-eb07398175c9",
+            "name": "Code18",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "operation": "xlsx",
+                "binaryPropertyName": "topicsFile",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.extractFromFile",
+            "typeVersion": 1,
+            "position": [
+                -1840,
+                4048
+            ],
+            "id": "9babbc1b-d5ec-4e25-a9d3-fc1460f3d6e1",
+            "name": "Extract from File",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "fieldToSplitOut": "easy,medium,hard",
+                "options": {}
+            },
+            "type": "n8n-nodes-base.splitOut",
+            "typeVersion": 1,
+            "position": [
+                -736,
+                4032
+            ],
+            "id": "bd2492c1-c7b0-401c-b5a1-8c45a12c022e",
+            "name": "Split Out",
+            "onError": "continueErrorOutput"
+        },
+        {
+            "parameters": {
+                "model": "x-ai/grok-4.1-fast",
+                "options": {}
+            },
+            "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+            "typeVersion": 1,
+            "position": [
+                240,
+                4256
+            ],
+            "id": "eb88dd85-fc41-4f60-8af5-bb8a7ae21a01",
+            "name": "OpenRouter Chat Model24",
+            "credentials": {
+                "openRouterApi": {
+                    "id": "QnMaUiFhCkOuwbKR",
+                    "name": "company"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "promptType": "define",
+                "text": "=====# ROLE & OBJECTIVE\nYou are an expert assessment designer specializing in creating high-quality coding multiple-choice questions (MCQs).\n\nCRITICAL MANDATE:\n1. The Question Text MUST be purely plain English describing a programming problem, goal, or concept. It MUST NOT contain any code snippets, backticks, or raw syntax.\n2. The Options (A, B, C, D) MUST be exclusively RAW code snippets. DO NOT wrap options in markdown backticks (
+http: //googleusercontent.com/immersive_entry_chip/0
+http: //googleusercontent.com/immersive_entry_chip/1
+http: //googleusercontent.com/immersive_entry_chip/2
+http: //googleusercontent.com/immersive_entry_chip/3
+http: //googleusercontent.com/immersive_entry_chip/4
+http: //googleusercontent.com/immersive_entry_chip/5
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                -976,
+                4016
+            ],
+            "id": "aa6a6222-e4a8-41c1-8ac9-29fc8fd211a2",
+            "name": "Code in JavaScript4",
+            "onError": "continueErrorOutput"
+        }
+    ],
+    "connections": {
+        "Edit Fields": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP Request1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Edit Fields4": {
+            "main": [
+                [
+                    {
+                        "node": "HTTP success",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Send a message": {
+            "main": [
+                [
+                    {
+                        "node": "Edit Fields4",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenRouter Chat Model1": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent easy ",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent easy ": {
+            "main": [
+                [
+                    {
+                        "node": "Code in JavaScript4",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code in JavaScript": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent easy ",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Merge1": {
+            "main": [
+                [
+                    {
+                        "node": "Code",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Convert to File1": {
+            "main": [
+                [
+                    {
+                        "node": "Code5",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code": {
+            "main": [
+                [
+                    {
+                        "node": "Convert to File1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code5": {
+            "main": [
+                [
+                    {
+                        "node": "Send a message",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code16": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent easy 4",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code17": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent medium ",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code18": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent hard ",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Extract from File": {
+            "main": [
+                [
+                    {
+                        "node": "Code in JavaScript",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Out": {
+            "main": [
+                [
+                    {
+                        "node": "Code17",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Code18",
+                        "type": "main",
+                        "index": 0
+                    },
+                    {
+                        "node": "Code16",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenRouter Chat Model24": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent medium 5",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent easy 4": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent ",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent medium ": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent medium 5",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent medium 5": {
+            "main": [
+                [
+                    {
+                        "node": "Merge1",
+                        "type": "main",
+                        "index": 1
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent hard ": {
+            "main": [
+                [
+                    {
+                        "node": "AI Agent hard 5",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent hard 5": {
+            "main": [
+                [
+                    {
+                        "node": "Merge1",
+                        "type": "main",
+                        "index": 2
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenRouter Chat Model7": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent ",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "AI Agent ": {
+            "main": [
+                [
+                    {
+                        "node": "Merge1",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenRouter Chat Model8": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent easy 4",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenRouter Chat Model25": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent medium ",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenRouter Chat Model26": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent hard 5",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "OpenRouter Chat Model27": {
+            "ai_languageModel": [
+                [
+                    {
+                        "node": "AI Agent hard ",
+                        "type": "ai_languageModel",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Extract from File",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Code in JavaScript4": {
+            "main": [
+                [
+                    {
+                        "node": "Split Out",
+                        "type": "main",
+                        "index": 0
+                    }
+                ],
+                [
+                    {
+                        "node": "Edit Fields",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "pinData": {},
+    "meta": {
+        "templateCredsSetupCompleted": true,
+        "instanceId": "8084017c027b0f6e084f0d160c1b5ae63ce4288ee036b2cc3fba316705f6ccca"
+    }
+}

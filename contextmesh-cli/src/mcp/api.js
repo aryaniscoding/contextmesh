@@ -1,7 +1,7 @@
 import axios from "axios";
 import { getConfig } from "../utils/config.js";
 
-// Reads the dynamically configured backend URL
+// Default API client — 15s timeout for most calls
 export function getApi() {
   const config = getConfig();
   const baseURL = config ? config.backendUrl : "http://localhost:8000";
@@ -9,7 +9,23 @@ export function getApi() {
 
   return axios.create({
     baseURL,
-    timeout: 10000,
+    timeout: 15000,
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": token ? `Bearer ${token}` : ""
+    },
+  });
+}
+
+// Long-timeout client for save_context — embedding + synthesis can take 30-60s
+export function getLongApi() {
+  const config = getConfig();
+  const baseURL = config ? config.backendUrl : "http://localhost:8000";
+  const token = config ? config.token : "";
+
+  return axios.create({
+    baseURL,
+    timeout: 60000,
     headers: {
       "Content-Type": "application/json",
       "Authorization": token ? `Bearer ${token}` : ""
