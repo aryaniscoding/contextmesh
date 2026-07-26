@@ -1,8 +1,5 @@
 name: Deploy frontend
 
-# The frontend is built here rather than on the instance: it pulls ~3000 modules
-# and the t3.micro has 1GB of RAM and no Node installed. GitHub's runner does it
-# in well under a minute.
 on:
   push:
     branches: [main]
@@ -35,8 +32,6 @@ jobs:
         run: npm ci
 
       - name: Build
-        # Relative /api, so the browser only ever talks to one origin and CORS
-        # never comes into play. An absolute URL here would reintroduce it.
         env:
           VITE_CONTEXTMESH_API: /api
         run: npm run build
@@ -50,18 +45,21 @@ jobs:
           echo "bundle uses the relative /api base"
 
       - name: Set up SSH
+        env:
+          EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
+          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           mkdir -p ~/.ssh
-          printf '%s' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
 
       - name: Ship it
-        # Unpacked into a staging directory first, then swapped in. A transfer
-        # that dies halfway therefore cannot leave the live site half-deleted.
+        env:
+          EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
           tar -czf - -C dist . | ssh -i ~/.ssh/deploy_key -o BatchMode=yes \
-            ubuntu@${{ secrets.EC2_HOST }} 'bash -euo pipefail -c "
+            ubuntu@"$EC2_HOST" 'bash -euo pipefail -c "
               rm -rf /tmp/fe-deploy
               mkdir -p /tmp/fe-deploy
               tar -xzf - -C /tmp/fe-deploy
@@ -79,5 +77,5 @@ jobs:
 
           echo "site=$site spa=$spa api=$api"
           [ "$site" = "200" ] || { echo "site not serving"; exit 1; }
-          [ "$spa" = "200" ]  || { echo "SPA fallback broken — deep links would 404"; exit 1; }
+          [ "$spa"  = "200" ] || { echo "SPA fallback broken"; exit 1; }
           echo "$api" | grep -q '"ok"' || { echo "same-origin API proxy broken"; exit 1; }
