@@ -49,10 +49,15 @@ jobs:
           EC2_SSH_KEY: ${{ secrets.EC2_SSH_KEY }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
         run: |
+          echo "1: mkdir"
           mkdir -p ~/.ssh
-          printf '%s\n' "$EC2_SSH_KEY" > ~/.ssh/deploy_key
+          echo "2: write key (length=$(printf '%s' "$EC2_SSH_KEY" | wc -c))"
+          printf '%s\n' "$EC2_SSH_KEY" | tr -d '\r' > ~/.ssh/deploy_key
+          echo "3: chmod"
           chmod 600 ~/.ssh/deploy_key
-          ssh-keyscan -H "$EC2_HOST" >> ~/.ssh/known_hosts
+          echo "4: keyscan host=$(printf '%s' "$EC2_HOST" | tr -d '\r\n')"
+          ssh-keyscan -T 10 -H "$(printf '%s' "$EC2_HOST" | tr -d '\r\n')" >> ~/.ssh/known_hosts
+          echo "5: done"
 
       - name: Ship it
         env:
