@@ -1,0 +1,81 @@
+name: Deploy backend
+
+# Path-filtered so a frontend-only change never bounces the API. The backend
+# deploy has a few seconds of downtime between stop and run, so it should only
+# happen when backend code actually changed.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "contextmesh-backend/**"
+      - ".github/workflows/deploy-backend.yml"
+  workflow_dispatch:
+
+# Never let two deploys interleave. cancel-in-progress stays false because
+# killing a run between `docker stop` and `docker run` would leave nothing
+# serving at all.
+concurrency:
+  group: deploy-backend
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Build and restart the container
+        run: |
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes \
+            ubuntu@${{ secrets.EC2_HOST }} 'bash -euo pipefail' <<'REMOTE'
+            cd ~/contextmesh
+
+            # reset rather than merge: the instance is a deploy target, not a
+            # place anyone edits code, so it should match origin exactly. .env
+            # is gitignored and therefore untouched by this.
+            git fetch origin main
+            git reset --hard origin/main
+
+            cd contextmesh-backend
+            docker build -t contextmesh-backend .
+
+            docker stop contextmesh 2>/dev/null || true
+            docker rm contextmesh 2>/dev/null || true
+
+            docker run -d \
+              --name contextmesh \
+              --restart unless-stopped \
+              --env-file .env \
+              -p 127.0.0.1:8000:8000 \
+              contextmesh-backend
+
+            # Each build leaves the previous image dangling. On a 20GB disk that
+            # fills up faster than you would expect.
+            docker image prune -f
+          REMOTE
+
+      - name: Wait for the API to come back
+        run: |
+          for i in $(seq 1 20); do
+            if curl -fsS --max-time 5 https://api.contextmesh.live/health | grep -q '"ok"'; then
+              echo "healthy after ${i} attempt(s)"
+              exit 0
+            fi
+            sleep 5
+          done
+          echo "API did not report healthy within 100s"
+          exit 1
+
+      - name: Confirm docs stayed hidden
+        run: |
+          code=$(curl -s -o /dev/null -w '%{http_code}' https://api.contextmesh.live/openapi.json)
+          if [ "$code" = "200" ]; then
+            echo "openapi.json is public — ENABLE_DOCS is set on the server"
+            exit 1
+          fi
+          echo "docs hidden (openapi.json -> $code)"

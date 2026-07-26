@@ -1,0 +1,83 @@
+name: Deploy frontend
+
+# The frontend is built here rather than on the instance: it pulls ~3000 modules
+# and the t3.micro has 1GB of RAM and no Node installed. GitHub's runner does it
+# in well under a minute.
+on:
+  push:
+    branches: [main]
+    paths:
+      - "context-mesh-hub/**"
+      - ".github/workflows/deploy-frontend.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-frontend
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: context-mesh-hub
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: context-mesh-hub/package-lock.json
+
+      - name: Install
+        run: npm ci
+
+      - name: Build
+        # Relative /api, so the browser only ever talks to one origin and CORS
+        # never comes into play. An absolute URL here would reintroduce it.
+        env:
+          VITE_CONTEXTMESH_API: /api
+        run: npm run build
+
+      - name: Fail if an absolute API URL got baked in
+        run: |
+          if grep -rqE "localhost:8000|https://api\.contextmesh\.live" dist/assets/*.js; then
+            echo "An absolute API URL is in the bundle — the same-origin build was not used."
+            exit 1
+          fi
+          echo "bundle uses the relative /api base"
+
+      - name: Set up SSH
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s' "${{ secrets.EC2_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          ssh-keyscan -H "${{ secrets.EC2_HOST }}" >> ~/.ssh/known_hosts 2>/dev/null
+
+      - name: Ship it
+        # Unpacked into a staging directory first, then swapped in. A transfer
+        # that dies halfway therefore cannot leave the live site half-deleted.
+        run: |
+          tar -czf - -C dist . | ssh -i ~/.ssh/deploy_key -o BatchMode=yes \
+            ubuntu@${{ secrets.EC2_HOST }} 'bash -euo pipefail -c "
+              rm -rf /tmp/fe-deploy
+              mkdir -p /tmp/fe-deploy
+              tar -xzf - -C /tmp/fe-deploy
+              test -f /tmp/fe-deploy/index.html
+              rm -rf /var/www/contextmesh/*
+              cp -r /tmp/fe-deploy/. /var/www/contextmesh/
+              rm -rf /tmp/fe-deploy
+            "'
+
+      - name: Verify the site and the API proxy
+        run: |
+          site=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://contextmesh.live/)
+          spa=$(curl -s -o /dev/null -w '%{http_code}' --max-time 10 https://contextmesh.live/dashboard)
+          api=$(curl -s --max-time 10 https://contextmesh.live/api/health)
+
+          echo "site=$site spa=$spa api=$api"
+          [ "$site" = "200" ] || { echo "site not serving"; exit 1; }
+          [ "$spa" = "200" ]  || { echo "SPA fallback broken — deep links would 404"; exit 1; }
+          echo "$api" | grep -q '"ok"' || { echo "same-origin API proxy broken"; exit 1; }

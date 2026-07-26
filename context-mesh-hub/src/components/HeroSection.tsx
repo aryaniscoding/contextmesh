@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { motion } from "framer-motion";
+import { motion, useReducedMotion } from "framer-motion";
 import { ArrowRight, Github, ChevronDown, LogIn, Users, LayoutDashboard } from "lucide-react";
 import { useState, useEffect, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
@@ -7,6 +7,7 @@ import { ContextFlowSVG, NetworkMeshSVG, DataPacketsSVG, RingOrbitsSVG } from ".
 import { useAuth } from "@/contexts/AuthContext";
 import CreateTeamModal from "./CreateTeamModal";
 import EnterTeamModal from "./EnterTeamModal";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const HeroDemo = lazy(() => import("./HeroDemo"));
 
@@ -39,6 +40,15 @@ const spring = { type: "spring" as const, stiffness: 100, damping: 15 };
 const HeroSection = () => {
   const { displayed, done, started } = useTypewriter("REMEMBERS", 80, 1200);
   const { user } = useAuth();
+  const isMobile = useIsMobile();
+  const shouldReduce = useReducedMotion();
+
+  // On mobile or when the OS requests reduced motion, large x/y transforms
+  // start content off-screen and the section's overflow:hidden clips it before
+  // the animation fires. Use simple fade-only animations in those cases.
+  const fade = (extra?: object) =>
+    isMobile || shouldReduce ? { opacity: 0 } : { opacity: 0, ...extra };
+  const noAnim = isMobile || shouldReduce;
   const navigate = useNavigate();
   const [createTeamOpen, setCreateTeamOpen] = useState(false);
   const [enterTeamOpen, setEnterTeamOpen] = useState(false);
@@ -71,7 +81,7 @@ const HeroSection = () => {
         <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-12">
           <div className="max-w-3xl lg:max-w-[50%] lg:flex-shrink-0">
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
+            initial={fade({ y: -20 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.2, ...spring }}
           >
@@ -82,7 +92,7 @@ const HeroSection = () => {
 
           <div className="mt-8 space-y-1">
             <motion.h1
-              initial={{ opacity: 0, x: -120 }}
+              initial={fade({ x: -120 })}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.9, delay: 0.4, ...spring }}
               className="font-display font-extrabold text-[44px] md:text-[64px] lg:text-[76px] leading-[1.05] tracking-tight text-foreground"
@@ -90,7 +100,7 @@ const HeroSection = () => {
               YOUR TEAM'S AI
             </motion.h1>
             <motion.h1
-              initial={{ opacity: 0, x: 120 }}
+              initial={fade({ x: 120 })}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.9, delay: 0.7, ...spring }}
               className="font-display font-extrabold text-[44px] md:text-[64px] lg:text-[76px] leading-[1.05] tracking-tight"
@@ -101,7 +111,7 @@ const HeroSection = () => {
               </span>
             </motion.h1>
             <motion.h1
-              initial={{ opacity: 0, y: 80 }}
+              initial={fade({ y: 80 })}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.9, delay: 0.9, ...spring }}
               className="font-display font-extrabold text-[44px] md:text-[64px] lg:text-[76px] leading-[1.05] tracking-tight text-foreground"
@@ -111,7 +121,7 @@ const HeroSection = () => {
           </div>
 
           <motion.p
-            initial={{ opacity: 0, y: 20 }}
+            initial={fade({ y: 20 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 1.0 }}
             className="mt-6 text-muted-foreground text-base md:text-lg max-w-[540px] leading-relaxed"
@@ -123,7 +133,7 @@ const HeroSection = () => {
           </motion.p>
 
           <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
+            initial={fade({ scale: 0.8 })}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.5, delay: 1.2, ...spring }}
             className="mt-8 flex flex-col sm:flex-row gap-3"
@@ -155,7 +165,7 @@ const HeroSection = () => {
 
           {/* Team action buttons */}
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={fade({ y: 15 })}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 1.5 }}
             className="mt-6 flex flex-col sm:flex-row gap-3"
@@ -214,7 +224,7 @@ const HeroSection = () => {
 
           {/* Right column — Split Brain Visual */}
           <motion.div
-            initial={{ opacity: 0, scale: 0.9 }}
+            initial={fade({ scale: 0.9 })}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ duration: 0.8, delay: 1.4 }}
             className="hidden lg:flex flex-1 items-center justify-center"
