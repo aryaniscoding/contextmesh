@@ -1,7 +1,7 @@
 import inquirer from "inquirer";
 import chalk from "chalk";
 import { joinTeam } from "../utils/api.js";
-import { saveConfig, getConfig } from "../utils/config.js";
+import { saveConfig, getConfig, getDefaultBackendUrl } from "../utils/config.js";
 import { autoConfigureAll } from "../utils/ide-config.js";
 
 export default async function setupCommand() {
@@ -49,7 +49,7 @@ export default async function setupCommand() {
       teamId: data.team_id,
       memberId: answers.memberName,
       token: data.token,
-      backendUrl: "http://localhost:8000",
+      backendUrl: getDefaultBackendUrl(),
       sessionStartIndex: 0,        // reset checkpoint on every new team join
       sessionStartedAt: new Date().toISOString(),
     });

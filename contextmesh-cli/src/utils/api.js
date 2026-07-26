@@ -1,8 +1,7 @@
 import axios from "axios";
+import { getDefaultBackendUrl } from "./config.js";
 
-export const DEFAULT_BACKEND_URL = "http://localhost:8000";
-
-export async function joinTeam(passcode, memberName, backendUrl = DEFAULT_BACKEND_URL) {
+export async function joinTeam(passcode, memberName, backendUrl = getDefaultBackendUrl()) {
   try {
     const res = await axios.post(`${backendUrl}/auth/cli-join`, {
       passcode,

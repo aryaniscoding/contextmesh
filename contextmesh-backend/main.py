@@ -17,9 +17,20 @@ load_dotenv()
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+def _flag(name: str) -> bool:
+    return os.getenv(name, "false").lower() in ("1", "true", "yes")
+
+
 # Off unless explicitly enabled, because debug mode returns full tracebacks
 # to the caller on any unhandled exception.
-DEBUG = os.getenv("DEBUG", "false").lower() in ("1", "true", "yes")
+DEBUG = _flag("DEBUG")
+
+# Swagger, ReDoc and the OpenAPI schema publish the entire API surface —
+# including that endpoints like /auth/team-passcode and /auth/promote-member
+# exist, and the exact shape of every request. Auth still rejects unauthorised
+# callers, so this is a separate flag from DEBUG: wanting to read the docs
+# should not also turn tracebacks back on.
+ENABLE_DOCS = _flag("ENABLE_DOCS")
 
 
 @asynccontextmanager
@@ -45,6 +56,9 @@ app = FastAPI(
     version="2.0.0",
     lifespan=lifespan,
     debug=DEBUG,
+    docs_url="/docs" if ENABLE_DOCS else None,
+    redoc_url="/redoc" if ENABLE_DOCS else None,
+    openapi_url="/openapi.json" if ENABLE_DOCS else None,
 )
 
 # CORS — allow frontend to connect

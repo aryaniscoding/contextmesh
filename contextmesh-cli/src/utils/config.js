@@ -5,6 +5,38 @@ import os from "os";
 const CONFIG_DIR = path.join(os.homedir(), ".contextmesh");
 const CONFIG_FILE = path.join(CONFIG_DIR, "config.json");
 
+// The hosted backend this build ships against.
+export const DEFAULT_BACKEND_URL = "https://api.contextmesh.live";
+
+// Setup in 1.0.4 and earlier wrote a hardcoded localhost backend into every
+// user's config, which only ever worked on the maintainer's own machine. Saved
+// values pointing at loopback are treated as stale so those installs recover on
+// upgrade instead of silently calling a server that was never there.
+const STALE_LOCAL_BACKEND = /^https?:\/\/(localhost|127\.0\.0\.1|0\.0\.0\.0)(:\d+)?\/?$/i;
+
+/**
+ * The URL a fresh setup should record. Overridable so anyone working on the
+ * backend can point the CLI at their own instance.
+ */
+export function getDefaultBackendUrl() {
+  return process.env.CONTEXTMESH_API || DEFAULT_BACKEND_URL;
+}
+
+/**
+ * The URL to actually call. An explicit override wins, then whatever setup
+ * saved, then the shipped default.
+ */
+export function getBackendUrl() {
+  if (process.env.CONTEXTMESH_API) {
+    return process.env.CONTEXTMESH_API;
+  }
+  const saved = getConfig()?.backendUrl;
+  if (saved && !STALE_LOCAL_BACKEND.test(saved)) {
+    return saved;
+  }
+  return DEFAULT_BACKEND_URL;
+}
+
 export function getConfig() {
   if (!fs.existsSync(CONFIG_FILE)) {
     return null;

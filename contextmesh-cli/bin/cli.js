@@ -16,7 +16,7 @@ const program = new Command();
 program
   .name("contextmesh-cli")
   .description("CLI to manage the ContextMesh MCP plugin")
-  .version("1.0.3");
+  .version("1.0.5");
 
 // The default action if no command is provided is to run the setup/onboarding flow
 program.action(() => {

@@ -13,7 +13,7 @@ import { startSessionTool } from "./tools/startSession.js";
 const server = new Server(
   {
     name: "contextmesh",
-    version: "1.0.3",
+    version: "1.0.5",
   },
   {
     capabilities: { tools: {} },
